@@ -48,6 +48,16 @@ CREATE TABLE changelog (            -- row-level change stream (our WAL/CDC feed
 """
 
 
+DROP_ALL = """
+DROP TABLE IF EXISTS changelog;
+DROP TABLE IF EXISTS query_log;
+DROP TABLE IF EXISTS order_items;
+DROP TABLE IF EXISTS orders;
+DROP TABLE IF EXISTS inventory;
+DROP TABLE IF EXISTS customers;
+"""
+
+
 def connect(path=LIVE):
     c = sqlite3.connect(path, timeout=30, check_same_thread=False, isolation_level=None)
     c.row_factory = sqlite3.Row
@@ -57,6 +67,7 @@ def connect(path=LIVE):
 
 
 def create_schema(c):
+    c.executescript(DROP_ALL)
     c.executescript(SCHEMA)
     c.execute("INSERT INTO sqlite_sequence(name, seq) VALUES ('orders', 1000)")
     for t, pk in TABLES.items():

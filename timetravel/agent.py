@@ -5,11 +5,10 @@ import threading
 import time
 import uuid
 
-from . import db, tools
+from . import db, llm, tools
 
 PACE = float(os.getenv("TT_PACE", "0.4"))     # tiny pause between steps so the feed is readable on stage
 SESSIONS = {}
-_UNITS = {"second": 1, "sec": 1, "s": 1, "minute": 60, "min": 60, "m": 60, "hour": 3600, "hr": 3600, "h": 3600}
 
 
 def fmt(ts):
@@ -17,21 +16,8 @@ def fmt(ts):
 
 
 def parse_intent(prompt):
-    """Deterministic intent parser (regex). Swap for a Bedrock/Strands LLM call; keep this as fallback."""
-    p = prompt.lower()
-    out = {"rewind_seconds": None, "before_incident": False, "preserve": [], "preserve_count": None, "remediate": False}
-    m = re.search(r"(\d+(?:\.\d+)?)\s*(seconds?|secs?|minutes?|mins?|hours?|hrs?|[smh])\b\s*(?:ago|earlier)?", p)
-    if m:
-        out["rewind_seconds"] = float(m.group(1)) * _UNITS[m.group(2).rstrip("s") if m.group(2) not in ("s",) else "s"]
-    if re.search(r"before the (crash|incident|wipe|bug)", p):
-        out["before_incident"] = True
-    m = re.search(r"keep (?:the |all )?(\d+)?\s*(orders?|customers?)", p)
-    if m:
-        out["preserve"].append("orders" if m.group(2).startswith("order") else "customers")
-        out["preserve_count"] = int(m.group(1)) if m.group(1) else None
-    if re.search(r"\b(fix|patch|repair)\b", p):
-        out["remediate"] = True
-    return out
+    """LLM-first intent parser with deterministic regex fallback. Always returns a dict."""
+    return llm.parse_intent(prompt)
 
 
 class Session:
@@ -86,6 +72,15 @@ def _pipeline(s):
     s.phase = "parsing"
     s.log("Orchestrator", f"Incident session {s.id} opened (immutable ID). Parsing request...")
     s.parsed = parse_intent(s.prompt)
+    confidence = s.parsed.get("confidence", 1.0)
+    if confidence < llm.config.min_confidence:
+        s.log(
+            "Orchestrator",
+            f"⚠ Low confidence ({confidence:.0%}) parsing your request: "
+            f"\"{s.parsed.get('reasoning', '')}\". "
+            f"Proceeding — review parsed values before approving.",
+            "warn",
+        )
     incident = tools.detect_incident(live)
     target = None
     if s.parsed["rewind_seconds"]:
@@ -142,7 +137,7 @@ def _pipeline(s):
                              f"Dry run on clone: {'PASSED' if summary['dry_run_ok'] else 'FAILED'}.",
           "ok" if summary["dry_run_ok"] else "error")
     for c in summary["conflicts"]:
-        s.log("Data Reconciler", c["detail"], "warn")
+        s.log("Data Reconciler", c.get("reason", c["detail"]), "warn")
 
     # ---- 5. Root cause + patch
     if s.parsed["remediate"]:
@@ -167,6 +162,10 @@ def _pipeline(s):
     s.phase = "awaiting_approval"
     s.log("HITL Gate", f"PAUSED before touching production. Risk {summary['risk']['label']} "
                        f"({summary['risk']['score']}/100). Review the merge and patch, then approve.", "gate")
+    try:
+        branch.close()
+    except Exception:
+        pass
     live.close()
 
 

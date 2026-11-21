@@ -11,7 +11,7 @@ import os
 import re
 import time
 
-from . import appcode, db, guard
+from . import appcode, db, guard, llm
 
 INV_UPSERT = ("INSERT INTO inventory(sku,name,stock,price_cents) VALUES(?,?,?,?) "
               "ON CONFLICT(sku) DO UPDATE SET stock=excluded.stock")
@@ -139,6 +139,7 @@ def plan_merge_tool(live, branch, delta, scratch_path):
                 if o["id"] not in backorder_ids:
                     backorder_ids.append(o["id"])
     expected = running
+    llm.explain_conflicts(conflicts)
     inv_rows = [(s, base[s]["name"], expected[s], base[s]["price_cents"])
                 for s in sorted(expected) if cur.get(s, {}).get("stock") != expected[s]]
     plan = {
@@ -220,38 +221,74 @@ def diagnose_and_patch_tool(live, branch, incident):
     out = {"found": True, "incident_sql": incident["sql"], "source": incident["source"],
            "rows_affected": incident["rows_affected"], "at": incident["ts"],
            "guard_verdict": guard.analyze(incident["sql"])}
-    patched = _patch_source(src, incident["sql"])
+    # --- LLM patch attempt (primary) ---
+    patched = None
+    llm_patch = llm.propose_patch(
+        source=src,
+        incident_sql=incident["sql"],
+        rows_affected=incident["rows_affected"],
+        endpoint=incident["source"],
+    )
+    if llm_patch is not None:
+        patched = llm_patch.patched_source
+        out["patch_source"] = "llm"
+        out["_llm_explanation"] = llm_patch.explanation
+    else:
+        patched = _patch_source(src, incident["sql"])
+        out["patch_source"] = "regex"
+
     if not patched:
         out["explanation"] = "Offending query located in the log but no safe automatic patch available."
         out["patch_ok"] = False
         return out
+
+    def _verify_candidate(candidate_src):
+        try:
+            ns = {}
+            exec(compile(candidate_src, "patched_handlers", "exec"), ns)
+            sandbox = db.clone(branch, ":memory:")
+            before = {r["sku"]: r["stock"] for r in sandbox.execute("SELECT sku, stock FROM inventory")}
+            res = ns["sync_stock"](sandbox, {"sku": "APX-0007", "stock": 0})
+            after = {r["sku"]: r["stock"] for r in sandbox.execute("SELECT sku, stock FROM inventory")}
+            changed = [s for s in before if before[s] != after[s]]
+            try:
+                ns["sync_stock"](sandbox, {"stock": 0})
+                rejects_missing = False
+            except ValueError:
+                rejects_missing = True
+            sandbox.close()
+            t_list = [
+                {"name": "Crash payload {sku: APX-0007, stock: 0} touches exactly 1 row",
+                 "ok": res.get("updated_rows") == 1 and changed == ["APX-0007"], "detail": f"{res.get('updated_rows')} row(s) updated"},
+                {"name": "Payload without sku is rejected", "ok": rejects_missing, "detail": "ValueError raised"},
+            ]
+            return all(t["ok"] for t in t_list), t_list
+        except Exception as e:
+            return False, [{"name": "Patch execution on sandbox clone", "ok": False, "detail": str(e)}]
+
+    patch_ok, tests = _verify_candidate(patched)
+    # If LLM patch failed sandbox verification, fall back to deterministic regex patch
+    if not patch_ok and out.get("patch_source") == "llm":
+        fallback_patched = _patch_source(src, incident["sql"])
+        if fallback_patched:
+            fb_ok, fb_tests = _verify_candidate(fallback_patched)
+            if fb_ok:
+                patched = fallback_patched
+                patch_ok, tests = fb_ok, fb_tests
+                out["patch_source"] = "regex (fallback)"
+                out.pop("_llm_explanation", None)
+
     diff = "".join(difflib.unified_diff(src.splitlines(True), patched.splitlines(True),
                                          "a/app/handlers.py", "b/app/handlers.py"))
-    # verify the patch on a throwaway clone of the rewound branch
-    ns = {}
-    exec(compile(patched, "patched_handlers", "exec"), ns)
-    sandbox = db.clone(branch, ":memory:")
-    before = {r["sku"]: r["stock"] for r in sandbox.execute("SELECT sku, stock FROM inventory")}
-    res = ns["sync_stock"](sandbox, {"sku": "APX-0007", "stock": 0})
-    after = {r["sku"]: r["stock"] for r in sandbox.execute("SELECT sku, stock FROM inventory")}
-    changed = [s for s in before if before[s] != after[s]]
-    try:
-        ns["sync_stock"](sandbox, {"stock": 0})
-        rejects_missing = False
-    except ValueError:
-        rejects_missing = True
-    sandbox.close()
-    tests = [
-        {"name": "Crash payload {sku: APX-0007, stock: 0} touches exactly 1 row",
-         "ok": res["updated_rows"] == 1 and changed == ["APX-0007"], "detail": f"{res['updated_rows']} row(s) updated"},
-        {"name": "Payload without sku is rejected", "ok": rejects_missing, "detail": "ValueError raised"},
-    ]
+
     out.update({
-        "patch_ok": all(t["ok"] for t in tests), "diff": diff, "patched_source": patched, "tests": tests,
-        "explanation": (f"The warehouse-sync endpoint ({incident['source']}) ran `{incident['sql']}` with no WHERE clause. "
-                        f"It was meant to set the count for one SKU, but it overwrote stock on all "
-                        f"{incident['rows_affected']:,} rows with the feed value (0). The fix scopes the UPDATE to "
-                        f"`WHERE sku = ?` and rejects requests that omit the SKU."),
+        "patch_ok": patch_ok, "diff": diff, "patched_source": patched, "tests": tests,
+        "explanation": out.pop("_llm_explanation", None) or (
+            f"The warehouse-sync endpoint ({incident['source']}) ran `{incident['sql']}` with no WHERE clause. "
+            f"It was meant to set the count for one SKU, but it overwrote stock on all "
+            f"{incident['rows_affected']:,} rows with the feed value (0). The fix scopes the UPDATE to "
+            f"`WHERE sku = ?` and rejects requests that omit the SKU."
+        ),
     })
     return out
 
