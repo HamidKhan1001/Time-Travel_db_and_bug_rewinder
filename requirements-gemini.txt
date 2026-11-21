@@ -1,0 +1,2 @@
+# Gemini provider dependencies
+google-genai>=2.30.1

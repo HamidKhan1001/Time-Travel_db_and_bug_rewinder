@@ -20,9 +20,14 @@ NAMES = ["Ava Chen", "Ben Ortiz", "Cleo Park", "Dev Patel", "Eli Novak", "Fay Mo
 
 
 def reset():
+    import gc
     appcode.write_source(appcode.read_source(appcode.PRISTINE_PATH))   # restore the buggy code
+    gc.collect()
     for f in glob.glob(os.path.join(db.DATA, "*.db")):
-        os.remove(f)
+        try:
+            os.remove(f)
+        except OSError:
+            pass
     os.makedirs(db.DATA, exist_ok=True)
     with db.LOCK:
         c = db.connect()

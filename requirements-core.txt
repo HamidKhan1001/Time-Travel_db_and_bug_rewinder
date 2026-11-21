@@ -1,0 +1,2 @@
+# No external dependencies required for core deterministic operation.
+# Runs on Python 3.9+ standard library + SQLite3.
