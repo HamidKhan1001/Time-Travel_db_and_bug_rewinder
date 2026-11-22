@@ -106,4 +106,17 @@ SSE does not create duplicate audit storage. It reads `session_audit_events` and
 
 SSE delivery is at-least-once for persisted audit history. It does not claim exactly-once delivery; clients must deduplicate stable event IDs. Live events are readable only after they are persisted as audit rows.
 
-The stream sends 15-second heartbeat comments and closes after a bounded 300-second window. It does not hold a SQLite transaction open.
+The stream sends 15-second heartbeat comments and closes after a bounded 300-second window. It does not hold a SQLite transaction open. The HTTP handler checks client disconnects and stops the iterator promptly; the iterator also accepts a `closed` callback for direct callers and tests.
+
+## Dashboard visualization contract
+
+The Phase 4 dashboard reads only backend-provided session and audit data. It does not calculate a separate recovery plan in the browser.
+
+- `recovery_preview` is built when the session reaches `awaiting_approval` by reading the merge plan and live database state without writes. It is labeled `PROPOSED — NOT APPLIED` until commit.
+- `actual_recovery` is captured inside the apply database lock after commit and contains only values that can be read from the live database. Missing sampled rows are marked unavailable.
+- `verification` is derived from post-apply smoke checks recorded by the engine. `unavailable` means no checks were executed; checksum verification is explicitly unavailable on the HTTP path even though it exists in the separate recovery package.
+- `undo_state` is derived from backend undo calls and does not claim availability before a successful apply.
+
+Projection rows are a bounded sample (20 rows in the backend default); `row_count`, `operation_counts`, and per-table counts cover the full plan. The HTTP recovery path produces no DELETE statements, so the projection reports `DELETE: 0` rather than rendering fabricated deletions. The renderer supports backend-supplied DELETE rows if a future backend exposes them.
+
+The dashboard merges SSE lifecycle events and audit polling fallback by stable audit event ID. Duplicate IDs are ignored, polling is used only as a fallback, and no progress percentage is displayed because the backend does not emit completion ratios. All untrusted values are rendered with DOM text nodes; `recovery_view.js` never uses `innerHTML`.

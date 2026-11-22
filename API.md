@@ -19,6 +19,10 @@ Serves `web/index.html` as HTML.
 
 Alias for `/`.
 
+## GET `/js/recovery_data.js`, GET `/js/recovery_view.js`
+
+Serves the Phase 4 frontend modules with `application/javascript; charset=utf-8`. Only these two filenames are allowed; any other path under `/js/` returns `404`.
+
 ## GET `/api/state`
 
 Returns live inventory, orders, incident, timeline dots, warm-branch metrics, and patch state.
@@ -45,6 +49,73 @@ Returns live inventory, orders, incident, timeline dots, warm-branch metrics, an
 Returns the full in-memory session JSON. Unknown IDs return `404`.
 
 The `phase` field includes `starting`, `parsing`, `branching`, `extracting_delta`, `planning`, `diagnosing`, `awaiting_approval`, `applying`, `applied`, `undone`, or `error`.
+
+### Phase 4 visualization fields
+
+These keys are additive and do not replace existing session fields.
+
+| Field | Meaning |
+|---|---|
+| `recovery_preview` | Read-only proposed projection derived from the merge plan and live state at plan time. `null` before planning completes. |
+| `actual_recovery` | Real post-commit values for the sampled projection rows. `null` until approval succeeds. |
+| `verification` | Backend verification result from post-apply checks only. `null` before execution. |
+| `undo_state` | Backend-derived undo availability, initiation, success, or failure. |
+
+`recovery_preview` shape:
+
+```json
+{
+  "label": "PROPOSED RECOVERY PROJECTION — NOT APPLIED",
+  "generated_at": 1795340000.0,
+  "source": "Legacy merge plan plus read-only live database state",
+  "row_count": 1420,
+  "rows": [{
+    "id": "inventory:APX-0007:stock",
+    "table": "inventory",
+    "key": "APX-0007",
+    "field": "stock",
+    "operation": "UPDATE",
+    "before": 0,
+    "after": 120,
+    "note": "Idempotent inventory upsert restores the pre-incident stock value."
+  }],
+  "sample_truncated": true,
+  "tables": ["inventory"],
+  "operation_counts": {"INSERT": 0, "UPDATE": 1420, "DELETE": 0},
+  "counts_by_table": {"inventory": {"INSERT": 0, "UPDATE": 1420, "DELETE": 0}},
+  "delete_semantics": "The approved merge plan contains no DELETE statements; no deletions are proposed.",
+  "conflicts": [],
+  "validation": {"dry_run_ok": true, "checks": [], "risk": {"score": 8, "label": "LOW", "factors": []}}
+}
+```
+
+`rows` is a bounded sample; `operation_counts` and `row_count` cover the full plan. `DELETE` is reported as `0` because the HTTP recovery path uses idempotent upserts and status updates, not delete statements. A future backend that exposes compensating DELETE steps should supply its own row entries; the renderer already supports `[DELETE]` rows.
+
+`actual_recovery` shape:
+
+```json
+{
+  "captured_at": 1795340100.0,
+  "source": "Live database read after the approved recovery committed",
+  "values": {"inventory:APX-0007:stock": 120}
+}
+```
+
+A sampled value that cannot be read after apply is represented as `{"unavailable": "<reason>"}` rather than invented.
+
+`verification` shape:
+
+```json
+{
+  "status": "passed",
+  "method": "Post-apply smoke checks recorded by the recovery engine",
+  "checks": [{"name": "Foreign keys intact", "ok": true, "detail": "0 violations"}],
+  "completed_at": 1795340100.0,
+  "checksum": {"status": "unavailable", "reason": "The HTTP recovery path exposes post-apply smoke checks; checksum verification is not available on this session."}
+}
+```
+
+`status` is `passed` or `failed` only when the backend executed checks. It is `unavailable` when checks are absent. The UI separately shows checksum verification as unavailable; checksum verification exists in `timetravel/recovery` but is not wired into the HTTP session path.
 
 ## GET `/api/session/<id>/audit`
 

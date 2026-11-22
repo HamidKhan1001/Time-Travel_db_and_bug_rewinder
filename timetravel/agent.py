@@ -5,7 +5,7 @@ import threading
 import time
 import uuid
 
-from . import audit, db, llm, tools
+from . import audit, db, llm, recovery_projection, tools
 
 PACE = float(os.getenv("TT_PACE", "0.4"))     # tiny pause between steps so the feed is readable on stage
 SESSIONS = {}
@@ -25,6 +25,10 @@ class Session:
         self.id = "INC-" + uuid.uuid4().hex[:6].upper()
         self.prompt, self.phase, self.events = prompt, "starting", []
         self.parsed = self.branch = self.delta = self.plan = self.patch = self.result = self.timeline = None
+        self.recovery_preview = None
+        self.actual_recovery = None
+        self.verification = None
+        self.undo_state = recovery_projection.initial_undo_state()
         self.internal = {}
         self.created = time.time()
 
@@ -44,6 +48,10 @@ class Session:
                                        "items": [(i["sku"], i["qty"]) for i in o["items"]]}
                                       for o in self.delta["orders"]]} if self.delta else None),
                 "plan": self.plan, "patch": patch, "result": self.result,
+                "recovery_preview": self.recovery_preview,
+                "actual_recovery": self.actual_recovery,
+                "verification": self.verification,
+                "undo_state": self.undo_state,
                 "can_approve": self.phase == "awaiting_approval", "can_undo": self.phase == "applied"}
 
 
@@ -137,6 +145,7 @@ def _pipeline(s):
         live, branch, delta, os.path.join(db.DATA, f"scratch_{s.id}.db"))
     s.plan = summary
     s.internal.update(plan=plan, expected=expected)
+    s.recovery_preview = recovery_projection.build_preview(live, plan, summary)
     s.log("Data Reconciler", f"Plan: restore {summary['restored_rows']:,} inventory rows, preserve "
                              f"{summary['orders_preserved']} orders, {len(summary['conflicts'])} conflict(s) resolved. "
                              f"Dry run on clone: {'PASSED' if summary['dry_run_ok'] else 'FAILED'}.",
@@ -197,6 +206,7 @@ def approve(sid):
             checks = tools.apply_recovery_tool(
                 live, s.internal["plan"], s.internal["expected"], s.plan["order_ids"], s.internal["live_marker"],
                 patched, os.path.join(db.DATA, f"backup_{s.id}.db"), os.path.join(db.DATA, f"backup_{s.id}.py"))
+            actual = recovery_projection.capture_actual(live, s.recovery_preview)
         except Exception as e:
             s.phase = "awaiting_approval"
             s.log("Apply", f"Cutover rolled back, production unchanged: {e}", "error")
@@ -206,6 +216,16 @@ def approve(sid):
             live.close()
     s.result = {"checks": checks, "code_patched": bool(patched)}
     s.phase = "applied"
+    s.actual_recovery = actual
+    s.verification = recovery_projection.build_verification(checks)
+    s.undo_state = {
+        "available": True,
+        "initiated": False,
+        "succeeded": False,
+        "failed": False,
+        "detail": "Pre-recovery snapshot is available.",
+        "completed_at": None,
+    }
     _record_audit(s, "integrity_verified", "completed", {
         "all_checks_passed": all(c.get("ok") for c in checks),
         "check_count": len(checks),
@@ -226,16 +246,40 @@ def undo(sid):
         _record_audit(s, "undo_rejected", "rejected", {"current_phase": s.phase})
         raise ValueError("Nothing to undo.")
     _record_audit(s, "undo_initiated", "started", {})
+    s.undo_state = {
+        "available": False,
+        "initiated": True,
+        "succeeded": False,
+        "failed": False,
+        "detail": "Undo accepted; restoring the pre-recovery snapshot.",
+        "completed_at": None,
+    }
     with db.LOCK:
         live = db.connect()
         try:
             tools.undo_recovery(live, os.path.join(db.DATA, f"backup_{s.id}.db"), os.path.join(db.DATA, f"backup_{s.id}.py"))
         except Exception as e:
+            s.undo_state = {
+                "available": True,
+                "initiated": True,
+                "succeeded": False,
+                "failed": True,
+                "detail": f"Undo failed: {e}",
+                "completed_at": time.time(),
+            }
             _record_audit(s, "undo_failed", "failed", {"detail": str(e)})
             raise
         finally:
             live.close()
     s.phase = "undone"
+    s.undo_state = {
+        "available": False,
+        "initiated": True,
+        "succeeded": True,
+        "failed": False,
+        "detail": "Pre-recovery database snapshot and source backup restored.",
+        "completed_at": time.time(),
+    }
     _record_audit(s, "undo_completed", "completed", {})
     s.log("Apply", "Rewound the rewind: pre-recovery database snapshot and original code restored.", "warn")
     return s
