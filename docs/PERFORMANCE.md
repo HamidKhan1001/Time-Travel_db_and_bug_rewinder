@@ -6,7 +6,7 @@ This document records measured local performance evidence and checksum-integrity
 
 The current evidence was generated on `2026-11-22T17:41:49+00:00` from commit `bff18b1`. The Phase 5 working-tree changes were present but uncommitted when the benchmark was generated.
 
-Environment from `test-reports/phase5-benchmark-full.json`:
+Environment from `docs/evidence/phase5-benchmark-full.json`:
 
 - Windows `11-10.0.26200-SP0`, AMD64, 12 logical CPUs
 - CPython `3.13.1`, MSC v.1942 64-bit, SQLite `3.45.3`
@@ -18,8 +18,8 @@ Environment from `test-reports/phase5-benchmark-full.json`:
 Commands:
 
 ```bash
-python benchmarks/benchmark_recovery.py --datasets 1000 --iterations 1 --output test-reports/phase5-benchmark-smoke.json
-python benchmarks/benchmark_recovery.py --datasets 1000 10000 --iterations 3 --output test-reports/phase5-benchmark-full.json
+python benchmarks/benchmark_recovery.py --datasets 1000 --iterations 1 --output docs/evidence/phase5-benchmark-smoke.json
+python benchmarks/benchmark_recovery.py --datasets 1000 10000 --iterations 3 --output docs/evidence/phase5-benchmark-full.json
 ```
 
 The smoke report is a single-iteration check. It recorded a `0.480735s` median recovery duration for 1000 rows. The three-repetition report below is the primary evidence.
@@ -29,7 +29,7 @@ The smoke report is a single-iteration check. It recorded a `0.480735s` median r
 | 1000 | 3 | 0.463355s | 0.394594s | 0.026730s | 0.012540s | 0.242259s | 0.056232s | 0.088855s | 0.005105s |
 | 10000 | 3 | 4.692449s | 4.113598s | 0.212552s | 0.133658s | 2.454099s | 0.539473s | 1.053297s | 0.015316s |
 
-Ten times the inventory rows produced about a `10.1x` increase in median total recovery duration. Both datasets completed all three iterations with empty `errors`, `audit_status: committed`, and `integrity_status: VERIFIED`. Raw runs and sample counts are preserved in `test-reports/phase5-benchmark-full.json`; summaries now include `sample_count`.
+Ten times the inventory rows produced about a `10.1x` increase in median total recovery duration. Both datasets completed all three iterations with empty `errors`, `audit_status: committed`, and `integrity_status: VERIFIED`. Raw runs and sample counts are preserved in `docs/evidence/phase5-benchmark-full.json`; summaries now include `sample_count`.
 
 `peak_rss_mb_start`, `peak_rss_mb_end`, and `rss_growth_mb` are `0.0` because the `resource` module is unavailable on Windows. These are not measured zero-memory results and must not be reported as memory efficiency evidence.
 
@@ -37,13 +37,13 @@ Ten times the inventory rows produced about a `10.1x` increase in median total r
 
 Current, directly generated evidence:
 
-- `test-reports/phase5-benchmark-smoke.json` — genuine 1000-row single-iteration smoke run.
-- `test-reports/phase5-benchmark-full.json` — genuine 1000/10000-row, three-iteration benchmark with raw runs.
+- `docs/evidence/phase5-benchmark-smoke.json` — genuine 1000-row single-iteration smoke run.
+- `docs/evidence/phase5-benchmark-full.json` — genuine 1000/10000-row, three-iteration benchmark with raw runs.
 
 Historical evidence preserved but not mixed into current medians:
 
 - `benchmarks/benchmark_results.json` — older full benchmark from a different environment and commit.
-- `test-reports/phase1-benchmark-smoke.json`, `phase2-benchmark-smoke.json`, `phase2-final-benchmark-smoke.json`, `phase3-benchmark-smoke.json`, `phase3-independent-benchmark-smoke.json` — genuine historical smoke runs with earlier commits, mostly single iteration.
+- `docs/evidence/phase1-benchmark-smoke.json`, `phase2-benchmark-smoke.json`, `phase2-final-benchmark-smoke.json`, `phase3-benchmark-smoke.json`, `phase3-independent-benchmark-smoke.json` — genuine historical smoke runs with earlier commits, mostly single iteration.
 
 `docs/devlog.md` contains historical planning notes such as “No benchmark” and “No checksum”; those lines describe earlier planning state and are superseded by this document and `docs/AUDIT.md`.
 
