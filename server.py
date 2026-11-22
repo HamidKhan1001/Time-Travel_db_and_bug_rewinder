@@ -11,10 +11,8 @@ from urllib.parse import parse_qs, urlsplit
 
 from timetravel import agent, appcode, audit, db, seed, sse, tools
 
-WEB = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web")
 WARM = {"ms": None, "at": None}
 SHOW = ["APX-0007", "APX-0042", "APX-0100", "APX-0555", "APX-0777"]
-JS_FILES = {"recovery_data.js", "recovery_view.js"}
 APP_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "frontend", "dist")   # built React app (npm run build)
 MIME = {".html": "text/html; charset=utf-8", ".js": "application/javascript; charset=utf-8",
         ".css": "text/css; charset=utf-8", ".svg": "image/svg+xml", ".png": "image/png",
@@ -182,8 +180,12 @@ class H(BaseHTTPRequestHandler):
 
     def do_GET(self):
         try:
-            if self.path in ("/", "/index.html"):
-                return self._send(200, open(os.path.join(WEB, "index.html"), "rb").read(), "text/html; charset=utf-8")
+            if self.path in ("/", "/index.html"):          # the React app is the only UI
+                self.send_response(302)
+                self.send_header("Location", "/app/")
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+                return
             if self.path == "/api/state":
                 return self._send(200, api_state())
 
@@ -199,13 +201,6 @@ class H(BaseHTTPRequestHandler):
             if parsed.path in ("/api/audit", "/api/audit/summary") or (
                     parsed.path.startswith("/api/audit/") and parsed.path.count("/") == 3):
                 return self._audit_routes(parsed)
-
-            if parsed.path.startswith("/js/"):
-                name = parsed.path[4:]
-                if name not in JS_FILES:
-                    return self._send(404, {"error": "not found"})
-                with open(os.path.join(WEB, "js", name), "rb") as handle:
-                    return self._send(200, handle.read(), "application/javascript; charset=utf-8")
 
             if parsed.path.startswith("/api/session/") and parsed.path.endswith("/events"):
                 parts = parsed.path.strip("/").split("/")
