@@ -1,0 +1,23 @@
+# docker compose up --build   ->   http://127.0.0.1:8000/app/
+services:
+  time-travel:
+    build:
+      context: .
+      args:
+        EXTRAS: "${TT_EXTRAS:-}"      # set TT_EXTRAS=gemini (or bedrock, ai) to include an AI provider SDK
+    ports:
+      # Published on the host's loopback only. Widen it only after setting TT_API_TOKEN and adding TLS in front.
+      - "127.0.0.1:8000:8000"
+    environment:
+      TT_PACE: "0.4"
+      TT_LOG_LEVEL: "INFO"
+      # Optional: require "Authorization: Bearer <token>" on every /api route except /api/health.
+      TT_API_TOKEN: "${TT_API_TOKEN:-}"
+      # Optional AI provider (falls back to the rule-based parser if unset). Needs TT_EXTRAS=gemini at build time.
+      TT_LLM_PROVIDER: "${TT_LLM_PROVIDER:-gemini}"
+      GEMINI_API_KEY: "${GEMINI_API_KEY:-}"
+    volumes:
+      - tt-data:/srv/app/data
+    restart: unless-stopped
+volumes:
+  tt-data:

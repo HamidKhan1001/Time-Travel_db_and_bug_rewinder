@@ -31,7 +31,7 @@ class TestLLMFallback(unittest.TestCase):
                                "to before the crash, keep the 3 orders, and fix the bug that caused it.")
         self.assertTrue(r.before_incident)
         self.assertTrue(r.remediate)
-        self.assertEqual((r.preserve, r.preserve_count), (["orders"], 3))
+        self.assertEqual((r.preserve, r.preserve_count), (("orders",), 3))   # IntentResult.preserve is a tuple
         self.assertIsNone(r.rewind_seconds)
 
     def test_remediate(self):

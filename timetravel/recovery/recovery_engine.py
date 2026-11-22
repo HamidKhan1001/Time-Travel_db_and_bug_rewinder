@@ -129,15 +129,15 @@ def execute_plan(conn, plan, tables=None, verify=True, reference=None, timing=No
     keys = dependencies.inspect_foreign_keys(conn, tables)
     failed_schema = [check["name"] for check in schema_checks if not check["ok"]]
     if failed_schema:
-        error = ValueError("Unsafe recovery plan: " + "; ".join(failed_schema))
-        _record_rejected_run(conn, plan, error)
-        raise error
+        unsafe = ValueError("Unsafe recovery plan: " + "; ".join(failed_schema))
+        _record_rejected_run(conn, plan, unsafe)
+        raise unsafe
 
     conflicts = integrity.analyze_conflicts(conn, plan, tables, keys)
     if conflicts:
-        error = RecoveryConflictError(conflicts)
-        _record_rejected_run(conn, plan, error)
-        raise error
+        conflict_error = RecoveryConflictError(conflicts)
+        _record_rejected_run(conn, plan, conflict_error)
+        raise conflict_error
     preflight_end = time.perf_counter()
     if timing is not None:
         timing["preflight_seconds"] = preflight_end - started
@@ -159,9 +159,9 @@ def execute_plan(conn, plan, tables=None, verify=True, reference=None, timing=No
             "expected": None,
             "actual": None,
         } for check in failed_simulation]
-        error = RecoveryConflictError(conflicts)
-        _record_rejected_run(conn, plan, error)
-        raise error
+        simulation_error = RecoveryConflictError(conflicts)
+        _record_rejected_run(conn, plan, simulation_error)
+        raise simulation_error
 
     owns_reference = reference is None
     if reference is None:

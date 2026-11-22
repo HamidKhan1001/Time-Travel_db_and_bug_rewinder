@@ -63,7 +63,7 @@ def parse_intent_regex(prompt: str) -> IntentResult:
     return IntentResult(
         rewind_seconds=rewind_seconds,
         before_incident=before_incident,
-        preserve=preserve,
+        preserve=tuple(preserve),
         preserve_count=preserve_count,
         remediate=remediate,
         confidence=0.9,
