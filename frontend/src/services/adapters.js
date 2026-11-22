@@ -5,6 +5,7 @@
  */
 
 export const SCENARIO_NAME = 'Warehouse Wipe (Stock 0)'
+export const SCENARIO_2_NAME = 'Pricing Outage (Price $0)'
 
 export const SCENARIOS = [
   {
@@ -12,15 +13,15 @@ export const SCENARIOS = [
     code: 'S01',
     name: SCENARIO_NAME,
     description:
-      'A warehouse sync handler runs UPDATE inventory SET stock = ? with no WHERE clause and wipes every SKU while customers keep ordering.',
+      'A warehouse sync handler wipes every SKU stock count to 0 while customer orders keep arriving.',
     available: true,
   },
   {
     id: 'scenario-2',
     code: 'S02',
-    name: 'Price wipe (missing WHERE in sync_price)',
+    name: SCENARIO_2_NAME,
     description:
-      'A pricing sync handler runs UPDATE inventory SET price_cents = ? with no WHERE clause and wipes every SKU price to $0 while customers keep ordering.',
+      'A pricing feed sync zeroes out catalog prices across all SKUs while customer orders keep arriving.',
     available: true,
   },
 ]
