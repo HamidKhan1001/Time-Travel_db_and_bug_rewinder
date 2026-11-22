@@ -36,6 +36,38 @@ textarea{width:100%;background:#0b1120;color:var(--tx);border:1px solid var(--li
 .sec{display:none}.sec.show{display:block}
 .conf{border-left:3px solid var(--warn);padding:6px 10px;background:#241c08;border-radius:4px;margin-top:8px;font-size:13px}
 .shield{border:1px solid #1f5a43;background:#0f2a21;color:var(--ok);padding:8px 10px;border-radius:8px;font-size:13px}
+h3{font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--mu);margin:0 0 8px}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.status-strip{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.state{padding:4px 9px;border-radius:6px;border:1px solid var(--line);font-size:11px;letter-spacing:.6px;color:var(--tx);background:#0b1120}
+.state-proposed{border-color:#6b5a1c;background:#2a2410}.state-applied,.state-verified{border-color:#1f5a43;background:#0f2a21}
+.state-failed,.state-error{border-color:#6b2a33;background:#2a1217}.state-undone{border-color:#4b3a72;background:#1d1730}
+.projection-banner{display:inline-block;padding:6px 12px;border:1px solid #7a5a1c;background:#3a2c10;border-radius:6px;color:var(--warn);font-weight:700;letter-spacing:.6px;margin-bottom:10px}
+.projection-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:8px;margin:10px 0}
+.summary-item{border:1px solid var(--line);border-radius:8px;padding:8px;background:#0b1120;min-width:0}
+.summary-label{display:block;color:var(--mu);font-size:11px}.summary-value{display:block;font-size:14px;overflow-wrap:anywhere}
+.notice{font-size:12px;color:var(--mu);padding:6px 8px;border-left:3px solid var(--acc);background:#10192c;margin-top:6px;border-radius:0 4px 4px 0}
+.notice-warn{border-left-color:var(--warn);color:var(--warn)}
+.diff-table{font-size:12px}.diff-table td,.diff-table th{vertical-align:top;word-break:break-word}
+.diff-table .value{max-width:220px}.value-null,.value-unavailable{color:var(--mu);font-style:italic}
+.diff-insert .operation{color:var(--ok);font-weight:700}.diff-update .operation{color:var(--acc);font-weight:700}
+.diff-delete .operation{color:var(--bad);font-weight:700}.diff-unknown .operation{color:var(--warn);font-weight:700}
+.row-note{color:var(--mu);font-size:11px;margin-top:3px}
+.timeline{list-style:none;margin:0;padding:0 0 0 14px;border-left:2px solid var(--line)}
+.timeline-item{position:relative;padding:0 0 12px 12px;font-size:12px}
+.timeline-item:before{content:"";position:absolute;left:-21px;top:4px;width:9px;height:9px;border-radius:50%;background:var(--mu);border:2px solid var(--panel)}
+.timeline-completed:before{background:var(--ok)}.timeline-failed:before,.timeline-rejected:before{background:var(--bad)}
+.timeline-approved:before,.timeline-started:before{background:var(--acc)}
+.timeline-header{display:flex;gap:8px;flex-wrap:wrap;align-items:baseline}.event-name{font-weight:600}
+.event-status{color:var(--mu)}.event-time,.event-id,.event-details{color:var(--mu);font-size:11px;overflow-wrap:anywhere}
+.verification,.undo{display:inline-block;padding:5px 10px;border-radius:6px;border:1px solid var(--line);font-weight:600;font-size:12px}
+.verification-passed,.undo-succeeded{border-color:#1f5a43;background:#0f2a21;color:var(--ok)}
+.verification-failed,.undo-failed{border-color:#6b2a33;background:#2a1217;color:var(--bad)}
+.verification-pending{border-color:#6b5a1c;background:#2a2410;color:var(--warn)}
+.verification-message,.verification-method,.verification-time,.checksum-status,.undo-detail,.undo-time,.undo-note{font-size:12px;color:var(--mu);margin:6px 0}
+.verification-checks{padding-left:18px;margin:6px 0}.check{font-size:12px;margin-bottom:4px}.check-ok{color:var(--ok)}.check-failed{color:var(--bad)}.check-detail{color:var(--mu)}
+.empty-state{background:#0b1120;border:1px dashed var(--line);border-radius:8px;padding:12px;color:var(--mu);font-size:12px}
+@media(max-width:980px){main{grid-template-columns:1fr}#feed{height:180px}}
 </style></head><body>
 <header><h1>⏪ Time-Travel DB &amp; Bug Rewinder</h1><span id="warm" class="badge">branch engine…</span>
 <span id="inc" class="badge ok">System healthy</span><span class="spacer"></span>
@@ -46,7 +78,7 @@ textarea{width:100%;background:#0b1120;color:var(--tx);border:1px solid var(--li
   <div class="stat"><div><b id="units">–</b><span>units in stock</span></div><div><b id="zero">–</b><span>SKUs at zero</span></div><div><b id="skus">–</b><span>SKUs</span></div></div>
   <table id="sample"></table>
   <div class="row"><button id="crash" class="danger">① Trigger warehouse sync (bug)</button><button id="orders">② Place 3 orders</button></div>
-  <div class="row"><button id="rerun">⑤ Re-run the crash action</button></div>
+  <div class="row"><button id="rerun" class="danger">⑤ Re-run the crash action</button></div>
   <div id="rerunmsg" style="margin-top:8px"></div></div>
  <div class="panel"><h2>Recent orders</h2><table id="orderstbl"></table></div>
 </section>
@@ -61,24 +93,57 @@ textarea{width:100%;background:#0b1120;color:var(--tx);border:1px solid var(--li
  <div id="mergeSec" class="sec panel"><h2>3-way merge · before / after</h2><div class="grid2"><div><table id="ba"></table><div id="conflicts"></div></div>
   <div><div style="color:var(--mu)">Risk score</div><div><span id="risk" class="risk"></span> <span id="rlabel" class="pill badge"></span></div><div id="rfactors" style="color:var(--mu);font-size:12px"></div><div id="guards" style="margin-top:8px"></div></div></div>
   <h2 style="margin-top:14px">SQL merge preview</h2><div id="sql" class="diff mono"></div></div>
- <div id="patchSec" class="sec panel"><h2>Root cause &amp; code patch</h2><p id="why" style="margin-top:0"></p><div id="diff" class="diff mono"></div><div id="tests" style="margin-top:8px"></div></div>
- <div id="resSec" class="sec panel"><h2>Post-cutover smoke checks</h2><div id="checks"></div></div>
+  <div id="recoverySec" class="panel"><h2>Recovery projection &amp; result</h2>
+   <div id="recoveryStatus" class="status-strip" role="status" aria-live="polite"></div>
+   <div class="grid2"><div><h3>Before / after comparison</h3><div id="projection"></div></div>
+    <div><h3>Recovery lifecycle</h3><div id="timeline"></div>
+     <h3 style="margin-top:14px">Integrity verification</h3><div id="verification"></div>
+     <h3 style="margin-top:14px">Undo status</h3><div id="undoStatus"></div></div></div>
+  </div>
+  <div id="patchSec" class="sec panel"><h2>Root cause &amp; code patch</h2><p id="why" style="margin-top:0"></p><div id="diff" class="diff mono"></div><div id="tests" style="margin-top:8px"></div></div>
+  <div id="resSec" class="sec panel"><h2>Post-cutover smoke checks</h2><div id="checks"></div></div>
 </div></section></main>
+<script src="/js/recovery_data.js"></script>
+<script src="/js/recovery_view.js"></script>
 <script>
 const $=id=>document.getElementById(id),esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 const api=(p,b)=>fetch(p,b===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}).then(r=>r.json());
 const fmt=t=>new Date(t*1000).toLocaleTimeString([], {hour12:false}), usd=c=>'$'+(c/100).toFixed(2), n=x=>Number(x).toLocaleString();
-let sid=null,sess=null,state=null,feedN=0;
+let sid=null,sess=null,state=null,feedN=0,sse=null,sseSeen=new Set(),lifecycle=[],sseFailed=false;
+const clearRecovery=()=>{lifecycle=[];['recoveryStatus','projection','timeline','verification','undoStatus'].forEach(i=>$(i).innerHTML='')};
 const prompt0=m=>`Take the business back to ${m} minute${m>1?'s':''} ago, keep the 3 orders that came in after the crash, and fix the bug that caused it.`;
 $('prompt').value=prompt0(2);
 $('slider').oninput=e=>{const m=+e.target.value;$('sl').textContent=m+' min ago';$('prompt').value=prompt0(m);drawTL()};
 $('crash').onclick=async()=>{await api('/api/demo/crash',{});refresh()};
 $('orders').onclick=async()=>{await api('/api/demo/orders',{});refresh()};
 $('rerun').onclick=async()=>{const r=await api('/api/demo/crash',{});$('rerunmsg').innerHTML=r.updated_rows===1?`<div class="shield">🛡 Same action re-run: only <b>${r.updated_rows}</b> row touched. Inventory safe.</div>`:`<div class="conf">Updated ${r.updated_rows} rows (bug still present)</div>`;refresh()};
-$('reset').onclick=async()=>{await api('/api/demo/reset',{});sid=sess=null;feedN=0;$('feed').innerHTML='';['mergeSec','patchSec','resSec'].forEach(i=>$(i).classList.remove('show'));$('rerunmsg').innerHTML='';refresh()};
-$('run').onclick=async()=>{const r=await api('/api/rewind',{prompt:$('prompt').value});sid=r.id;feedN=0;$('feed').innerHTML='';['mergeSec','patchSec','resSec'].forEach(i=>$(i).classList.remove('show'));poll()};
+$('reset').onclick=async()=>{await api('/api/demo/reset',{});if(sse)sse.close();sse=null;sid=sess=null;feedN=0;sseFailed=false;$('feed').innerHTML='';clearRecovery();['mergeSec','patchSec','resSec'].forEach(i=>$(i).classList.remove('show'));$('rerunmsg').innerHTML='';refresh()};
+$('run').onclick=async()=>{const r=await api('/api/rewind',{prompt:$('prompt').value});sid=r.id;feedN=0;sseFailed=false;clearRecovery();sseSeen=new Set();if(sse)sse.close();sse=new EventSource('/api/session/'+encodeURIComponent(sid)+'/events');subscribeSSE(sse);$('feed').innerHTML='';['mergeSec','patchSec','resSec'].forEach(i=>$(i).classList.remove('show'));poll()};
 $('approve').onclick=async()=>{$('approve').disabled=true;const r=await api(`/api/session/${sid}/approve`,{});if(r.error)alert(r.error);poll();refresh()};
 $('undo').onclick=async()=>{const r=await api(`/api/session/${sid}/undo`,{});if(r.error)alert(r.error);poll();refresh()};
+
+function subscribeSSE(source){
+ const names=['session_started','preview_generated','approval_granted','approval_rejected','recovery_started','integrity_verified','recovery_completed','recovery_failed','undo_started','undo_completed','undo_failed','stream_error'];
+ const handle=(name,e)=>{let envelope;try{envelope=JSON.parse(e.data)}catch(_){return}const id=String(envelope.id||e.lastEventId||'');if(id&&sseSeen.has(id))return;if(id)sseSeen.add(id);lifecycle=RecoveryData.mergeLifecycle(lifecycle.concat(envelope));renderRecovery();const f=$('feed');f.innerHTML+=`<div class="l-ok"><span class="tag">[SSE]</span>${esc(name)} · ${esc(envelope.status||'event')}</div>`;f.scrollTop=f.scrollHeight;if(name==='recovery_completed'||name==='undo_completed'||name==='recovery_failed'||name==='undo_failed')source.close()};
+ names.forEach(name=>source.addEventListener(name,e=>handle(name,e)));
+ source.onmessage=e=>handle('message',e);
+ source.onopen=()=>{sseFailed=false};
+ source.onerror=()=>{sseFailed=true};
+}
+function renderRecovery(){
+ if(!sess)return;
+ const verification=RecoveryData.deriveVerification(sess),undo=RecoveryData.deriveUndo(sess);
+ RecoveryView.renderStatus($('recoveryStatus'),RecoveryData.buildStatus(sess,verification),document);
+ RecoveryView.renderProjection($('projection'),RecoveryData.buildProjection(sess),document);
+ RecoveryView.renderLifecycle($('timeline'),lifecycle,document);
+ RecoveryView.renderVerification($('verification'),verification,document);
+ RecoveryView.renderUndo($('undoStatus'),undo,document);
+ $('undo').disabled=!sess.can_undo;
+}
+async function pollAuditFallback(){
+ if(!sid||!sseFailed)return;
+ try{const r=await api('/api/session/'+encodeURIComponent(sid)+'/audit');if(r.events){lifecycle=RecoveryData.mergeLifecycle(r.events.map(e=>({id:e.id,event_type:e.event_type,status:e.status,timestamp:e.ts,payload:e.detail})));renderRecovery()}}catch(_){}
+}
 
 function drawTL(){
  if(!state)return;const now=state.now,W=360,t0=now-W,pos=t=>Math.max(0,Math.min(100,(t-t0)/W*100))+'%';
@@ -124,6 +189,6 @@ function renderSession(){
  else if(s.phase=='undone'){$('resSec').classList.add('show');$('checks').innerHTML='<div class="w">Recovery undone: snapshot restored.</div>'}
 }
 async function refresh(){state=await api('/api/state');renderState()}
-async function poll(){if(!sid)return;sess=await api('/api/session/'+sid);renderSession();drawTL()}
-setInterval(refresh,1000);setInterval(poll,500);refresh();
+async function poll(){if(!sid)return;sess=await api('/api/session/'+encodeURIComponent(sid));renderSession();drawTL();renderRecovery()}
+setInterval(refresh,1000);setInterval(poll,500);setInterval(pollAuditFallback,2000);refresh();
 </script></body></html>

@@ -5,7 +5,7 @@ import threading
 import time
 import uuid
 
-from . import db, llm, tools
+from . import audit, db, llm, recovery_projection, tools
 
 PACE = float(os.getenv("TT_PACE", "0.4"))     # tiny pause between steps so the feed is readable on stage
 SESSIONS = {}
@@ -25,6 +25,10 @@ class Session:
         self.id = "INC-" + uuid.uuid4().hex[:6].upper()
         self.prompt, self.phase, self.events = prompt, "starting", []
         self.parsed = self.branch = self.delta = self.plan = self.patch = self.result = self.timeline = None
+        self.recovery_preview = None
+        self.actual_recovery = None
+        self.verification = None
+        self.undo_state = recovery_projection.initial_undo_state()
         self.internal = {}
         self.created = time.time()
 
@@ -44,12 +48,17 @@ class Session:
                                        "items": [(i["sku"], i["qty"]) for i in o["items"]]}
                                       for o in self.delta["orders"]]} if self.delta else None),
                 "plan": self.plan, "patch": patch, "result": self.result,
+                "recovery_preview": self.recovery_preview,
+                "actual_recovery": self.actual_recovery,
+                "verification": self.verification,
+                "undo_state": self.undo_state,
                 "can_approve": self.phase == "awaiting_approval", "can_undo": self.phase == "applied"}
 
 
 def start(prompt, background=True):
     s = Session(prompt)
     SESSIONS[s.id] = s
+    _record_audit(s, "recovery_initiated", "started", {"prompt_length": len(prompt)})
     if background:
         threading.Thread(target=_run, args=(s,), daemon=True).start()
     else:
@@ -60,9 +69,13 @@ def start(prompt, background=True):
 def _run(s):
     try:
         _pipeline(s)
-    except Exception as e:      # surface failures in the UI instead of dying silently
+    except Exception as e:
         s.phase = "error"
         s.log("Orchestrator", f"Aborted safely, production untouched: {e}", "error")
+        try:
+            _record_audit(s, "recovery_failed", "failed", {"detail": str(e)})
+        except Exception as audit_error:
+            s.log("Audit", f"Audit persistence failed: {audit_error}", "error")
 
 
 def _pipeline(s):
@@ -132,6 +145,7 @@ def _pipeline(s):
         live, branch, delta, os.path.join(db.DATA, f"scratch_{s.id}.db"))
     s.plan = summary
     s.internal.update(plan=plan, expected=expected)
+    s.recovery_preview = recovery_projection.build_preview(live, plan, summary)
     s.log("Data Reconciler", f"Plan: restore {summary['restored_rows']:,} inventory rows, preserve "
                              f"{summary['orders_preserved']} orders, {len(summary['conflicts'])} conflict(s) resolved. "
                              f"Dry run on clone: {'PASSED' if summary['dry_run_ok'] else 'FAILED'}.",
@@ -162,6 +176,13 @@ def _pipeline(s):
     s.phase = "awaiting_approval"
     s.log("HITL Gate", f"PAUSED before touching production. Risk {summary['risk']['label']} "
                        f"({summary['risk']['score']}/100). Review the merge and patch, then approve.", "gate")
+    _record_audit(s, "recovery_preview_generated", "started", {
+        "dry_run_ok": bool(summary.get("dry_run_ok")),
+        "restored_rows": summary.get("restored_rows"),
+        "orders_preserved": summary.get("orders_preserved"),
+        "conflict_count": len(summary.get("conflicts", [])),
+        "risk_score": summary.get("risk", {}).get("score"),
+    })
     try:
         branch.close()
     except Exception:
@@ -172,8 +193,11 @@ def _pipeline(s):
 def approve(sid):
     s = SESSIONS[sid]
     if s.phase != "awaiting_approval":
+        _record_audit(s, "approval_rejected", "rejected", {"current_phase": s.phase})
         raise ValueError(f"Session is '{s.phase}', not awaiting approval.")
     s.phase = "applying"
+    _record_audit(s, "approval_granted", "approved", {"risk_score": s.plan.get("risk", {}).get("score")})
+    _record_audit(s, "recovery_execution_started", "started", {"live_marker": s.internal.get("live_marker")})
     s.log("HITL Gate", "Human approved. Starting atomic cutover.", "ok")
     with db.LOCK:
         live = db.connect()
@@ -182,14 +206,34 @@ def approve(sid):
             checks = tools.apply_recovery_tool(
                 live, s.internal["plan"], s.internal["expected"], s.plan["order_ids"], s.internal["live_marker"],
                 patched, os.path.join(db.DATA, f"backup_{s.id}.db"), os.path.join(db.DATA, f"backup_{s.id}.py"))
+            actual = recovery_projection.capture_actual(live, s.recovery_preview)
         except Exception as e:
             s.phase = "awaiting_approval"
             s.log("Apply", f"Cutover rolled back, production unchanged: {e}", "error")
+            _record_audit(s, "recovery_failed", "failed", {"detail": str(e)})
             raise
         finally:
             live.close()
     s.result = {"checks": checks, "code_patched": bool(patched)}
     s.phase = "applied"
+    s.actual_recovery = actual
+    s.verification = recovery_projection.build_verification(checks)
+    s.undo_state = {
+        "available": True,
+        "initiated": False,
+        "succeeded": False,
+        "failed": False,
+        "detail": "Pre-recovery snapshot is available.",
+        "completed_at": None,
+    }
+    _record_audit(s, "integrity_verified", "completed", {
+        "all_checks_passed": all(c.get("ok") for c in checks),
+        "check_count": len(checks),
+    })
+    _record_audit(s, "recovery_completed", "completed", {
+        "code_patched": bool(patched),
+        "checks": [{"name": c.get("name"), "ok": c.get("ok"), "detail": c.get("detail")} for c in checks],
+    })
     for c in checks:
         s.log("Smoke Test", f"{'PASS' if c['ok'] else 'FAIL'}: {c['name']} ({c['detail']})", "ok" if c["ok"] else "error")
     s.log("Apply", "Live. Inventory restored, orders preserved" + (", bug patched." if patched else "."), "ok")
@@ -199,11 +243,63 @@ def approve(sid):
 def undo(sid):
     s = SESSIONS[sid]
     if s.phase != "applied":
+        _record_audit(s, "undo_rejected", "rejected", {"current_phase": s.phase})
         raise ValueError("Nothing to undo.")
+    _record_audit(s, "undo_initiated", "started", {})
+    s.undo_state = {
+        "available": False,
+        "initiated": True,
+        "succeeded": False,
+        "failed": False,
+        "detail": "Undo accepted; restoring the pre-recovery snapshot.",
+        "completed_at": None,
+    }
     with db.LOCK:
         live = db.connect()
-        tools.undo_recovery(live, os.path.join(db.DATA, f"backup_{s.id}.db"), os.path.join(db.DATA, f"backup_{s.id}.py"))
-        live.close()
+        try:
+            tools.undo_recovery(live, os.path.join(db.DATA, f"backup_{s.id}.db"), os.path.join(db.DATA, f"backup_{s.id}.py"))
+        except Exception as e:
+            s.undo_state = {
+                "available": True,
+                "initiated": True,
+                "succeeded": False,
+                "failed": True,
+                "detail": f"Undo failed: {e}",
+                "completed_at": time.time(),
+            }
+            _record_audit(s, "undo_failed", "failed", {"detail": str(e)})
+            raise
+        finally:
+            live.close()
     s.phase = "undone"
+    s.undo_state = {
+        "available": False,
+        "initiated": True,
+        "succeeded": True,
+        "failed": False,
+        "detail": "Pre-recovery database snapshot and source backup restored.",
+        "completed_at": time.time(),
+    }
+    _record_audit(s, "undo_completed", "completed", {})
     s.log("Apply", "Rewound the rewind: pre-recovery database snapshot and original code restored.", "warn")
     return s
+
+
+def _record_audit(s, event_type, status, detail=None):
+    """Persist a session lifecycle event or raise explicitly on audit failure."""
+    with db.LOCK:
+        conn = db.connect()
+        try:
+            audit.record_event(conn, s.id, event_type, status, detail)
+        finally:
+            conn.close()
+
+
+def audit_events(sid):
+    """Read durable audit events for a session from SQLite."""
+    with db.LOCK:
+        conn = db.connect()
+        try:
+            return list(audit.read_session_events(conn, sid))
+        finally:
+            conn.close()

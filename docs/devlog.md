@@ -233,3 +233,12 @@ data/
 1. **Which LLM provider?** Gemini API (already available via this environment), AWS Bedrock (needed for sponsor prize), or both with a config switch?
 2. **Team roles?** Who owns which numbered team area?
 3. **Second crash scenario** — price wipe confirmed, or different idea?
+
+---
+
+## Hammad Work — Task 3 (Database Recovery Engine)
+
+Hammad's Task 3 contribution (commit `758298d`) added the production recovery engine,
+benchmarks, second crash scenario, integrity verification, and architecture docs.
+It was originally pushed directly to `main`; this PR exists so the work can be
+reviewed explicitly.

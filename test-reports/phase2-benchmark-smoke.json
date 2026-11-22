@@ -1,0 +1,149 @@
+{
+  "datasets": [
+    {
+      "dataset_rows": 1000,
+      "errors": [],
+      "runs": [
+        {
+          "apply_seconds": 0.08102859999962675,
+          "audit_status": "committed",
+          "checksum_verification_seconds": 0.02603590000035183,
+          "commit_seconds": 0.014942300000257092,
+          "database_bytes": 1572864,
+          "dataset_rows": 1000,
+          "event_count": 1000,
+          "execute_plan_seconds": 0.41993879999972705,
+          "faulty_transaction_id": 2,
+          "integrity_status": "VERIFIED",
+          "iteration": 1,
+          "peak_rss_mb_end": 0.0,
+          "peak_rss_mb_start": 0.0,
+          "plan_step_count": 1000,
+          "preflight_seconds": 0.23830099999941012,
+          "recovery_duration_seconds": 0.4624174000000494,
+          "recovery_execution_seconds": 0.3939028999993752,
+          "recovery_planning_seconds": 0.013324999999895226,
+          "rows_checked": 1050,
+          "rss_growth_mb": 0.0,
+          "seed": 20261122,
+          "simulation_seconds": 0.05483319999984815,
+          "snapshot_bytes": 507904,
+          "snapshot_seconds": 0.008192899998903158,
+          "transaction_history_seconds": 0.01702320000003965,
+          "unaccounted_seconds": 0.003937500001484295
+        }
+      ],
+      "summary": {
+        "apply_seconds": {
+          "average": 0.081029,
+          "maximum": 0.081029,
+          "median": 0.081029,
+          "minimum": 0.081029
+        },
+        "checksum_verification_seconds": {
+          "average": 0.026036,
+          "maximum": 0.026036,
+          "median": 0.026036,
+          "minimum": 0.026036
+        },
+        "commit_seconds": {
+          "average": 0.014942,
+          "maximum": 0.014942,
+          "median": 0.014942,
+          "minimum": 0.014942
+        },
+        "execute_plan_seconds": {
+          "average": 0.419939,
+          "maximum": 0.419939,
+          "median": 0.419939,
+          "minimum": 0.419939
+        },
+        "peak_rss_mb_end": {
+          "average": 0.0,
+          "maximum": 0.0,
+          "median": 0.0,
+          "minimum": 0.0
+        },
+        "preflight_seconds": {
+          "average": 0.238301,
+          "maximum": 0.238301,
+          "median": 0.238301,
+          "minimum": 0.238301
+        },
+        "recovery_duration_seconds": {
+          "average": 0.462417,
+          "maximum": 0.462417,
+          "median": 0.462417,
+          "minimum": 0.462417
+        },
+        "recovery_execution_seconds": {
+          "average": 0.393903,
+          "maximum": 0.393903,
+          "median": 0.393903,
+          "minimum": 0.393903
+        },
+        "recovery_planning_seconds": {
+          "average": 0.013325,
+          "maximum": 0.013325,
+          "median": 0.013325,
+          "minimum": 0.013325
+        },
+        "rss_growth_mb": {
+          "average": 0.0,
+          "maximum": 0.0,
+          "median": 0.0,
+          "minimum": 0.0
+        },
+        "simulation_seconds": {
+          "average": 0.054833,
+          "maximum": 0.054833,
+          "median": 0.054833,
+          "minimum": 0.054833
+        },
+        "snapshot_seconds": {
+          "average": 0.008193,
+          "maximum": 0.008193,
+          "median": 0.008193,
+          "minimum": 0.008193
+        },
+        "transaction_history_seconds": {
+          "average": 0.017023,
+          "maximum": 0.017023,
+          "median": 0.017023,
+          "minimum": 0.017023
+        }
+      }
+    }
+  ],
+  "environment": {
+    "captured_at_utc": "2026-11-22T10:44:15+00:00",
+    "cpu_brand": "AMD64 Family 25 Model 80 Stepping 0, AuthenticAMD",
+    "git_commit": "0124d4b",
+    "logical_cpus": 12,
+    "machine": "AMD64",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "python_version": "3.13.1",
+    "sqlite_version": "3.45.3",
+    "system": "Windows",
+    "total_memory_gb": null
+  },
+  "metadata": {
+    "command": "python3 benchmarks/benchmark_recovery.py",
+    "dataset_shape": "N inventory rows plus 10 customers, 20 orders, and 20 order items",
+    "datasets_requested": [
+      1000
+    ],
+    "faulty_operation": "UPDATE inventory SET stock = 0",
+    "generated_at_utc": "2026-11-22T10:44:15+00:00",
+    "iterations_requested": 1,
+    "memory_source": "resource.getrusage process high-water mark",
+    "notes": [
+      "Every timing comes from an actual recovery execution; no estimates or delays are used.",
+      "Peak RSS is a process-wide high-water mark and does not decrease between iterations.",
+      "Recovery execution excludes live checksum verification but includes preflight, simulation, apply, and commit.",
+      "Total recovery duration is wall-clock time from snapshot creation through execute_plan."
+    ],
+    "seed": 20261122,
+    "timing_source": "time.perf_counter"
+  }
+}
