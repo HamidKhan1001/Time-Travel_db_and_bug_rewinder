@@ -102,7 +102,10 @@ def _record_action(conn, run_id, step, status):
 
 
 def _record_failed_actions(conn, run_id, plan):
-    _record_actions(conn, run_id, plan.steps, "failed")
+    supported = tuple(step for step in plan.steps if step.op in ("I", "U", "D"))
+    if not supported:
+        return
+    _record_actions(conn, run_id, supported, "failed")
 
 
 def _finish_run(conn, run_id, status, detail):
@@ -117,16 +120,24 @@ def execute_plan(conn, plan, tables=None, verify=True, reference=None, timing=No
     tables = tables or db.TABLES
     if conn.in_transaction:
         raise RuntimeError("execute_plan requires a connection outside an explicit transaction")
-    plan_checks = integrity.assert_plan_valid(plan, tables)
+    try:
+        plan_checks = integrity.assert_plan_valid(plan, tables)
+    except ValueError as error:
+        _record_rejected_run(conn, plan, error)
+        raise
     schema_checks = integrity.validate_step_schema(conn, plan, tables)
     keys = dependencies.inspect_foreign_keys(conn, tables)
     failed_schema = [check["name"] for check in schema_checks if not check["ok"]]
     if failed_schema:
-        raise ValueError("Unsafe recovery plan: " + "; ".join(failed_schema))
+        error = ValueError("Unsafe recovery plan: " + "; ".join(failed_schema))
+        _record_rejected_run(conn, plan, error)
+        raise error
 
     conflicts = integrity.analyze_conflicts(conn, plan, tables, keys)
     if conflicts:
-        raise RecoveryConflictError(conflicts)
+        error = RecoveryConflictError(conflicts)
+        _record_rejected_run(conn, plan, error)
+        raise error
     preflight_end = time.perf_counter()
     if timing is not None:
         timing["preflight_seconds"] = preflight_end - started
@@ -137,9 +148,7 @@ def execute_plan(conn, plan, tables=None, verify=True, reference=None, timing=No
         timing["simulation_seconds"] = simulation_end - preflight_end
     failed_simulation = [check for check in simulation if not check["ok"]]
     if failed_simulation:
-        if simulation_reference is not None:
-            simulation_reference.close()
-        raise RecoveryConflictError([{
+        conflicts = [{
             "kind": "simulation-failure",
             "event_id": 0,
             "transaction_id": 0,
@@ -149,7 +158,10 @@ def execute_plan(conn, plan, tables=None, verify=True, reference=None, timing=No
             "detail": check["detail"],
             "expected": None,
             "actual": None,
-        } for check in failed_simulation])
+        } for check in failed_simulation]
+        error = RecoveryConflictError(conflicts)
+        _record_rejected_run(conn, plan, error)
+        raise error
 
     owns_reference = reference is None
     if reference is None:
@@ -182,6 +194,7 @@ def execute_plan(conn, plan, tables=None, verify=True, reference=None, timing=No
         failed = [check["name"] for check in checks if not check["ok"]]
         if failed:
             raise RuntimeError("post-recovery checks failed: " + "; ".join(failed))
+        _finish_run(conn, run_id, "committed", "ok")
         conn.execute("COMMIT")
         if timing is not None:
             timing["commit_seconds"] = time.perf_counter() - verification_end
@@ -196,7 +209,6 @@ def execute_plan(conn, plan, tables=None, verify=True, reference=None, timing=No
             simulation_reference.close()
         if owns_reference and reference is not None:
             reference.close()
-    _finish_run(conn, run_id, "committed", "ok")
     if timing is not None:
         timing["execute_plan_seconds"] = time.perf_counter() - started
     return {
@@ -242,3 +254,10 @@ def restore_snapshot(conn, path):
     finally:
         source.close()
     return path
+
+
+def _record_rejected_run(conn, plan, detail):
+    run_id = _start_run(conn, plan)
+    _finish_run(conn, run_id, "rolled-back", str(detail))
+    _record_failed_actions(conn, run_id, plan)
+    return run_id

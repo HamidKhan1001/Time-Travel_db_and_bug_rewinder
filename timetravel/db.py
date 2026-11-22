@@ -49,6 +49,7 @@ CREATE TABLE changelog (            -- row-level change stream (our WAL/CDC feed
 
 
 DROP_ALL = """
+DROP TABLE IF EXISTS session_audit_events;
 DROP TABLE IF EXISTS changelog;
 DROP TABLE IF EXISTS query_log;
 DROP TABLE IF EXISTS order_items;
@@ -60,14 +61,14 @@ DROP TABLE IF EXISTS customers;
 
 def connect(path=LIVE):
     from .recovery import transaction_logger
+    from . import audit
     c = sqlite3.connect(path, timeout=30, check_same_thread=False, isolation_level=None,
                         factory=transaction_logger.RecoveryConnection)
     c.row_factory = sqlite3.Row
     c.create_function("app_now", 0, clock.now)
     c.execute("PRAGMA foreign_keys=ON")
     transaction_logger.install(c, clock.now)
-    if path == LIVE and transaction_logger.schema_ready(c, TABLES):
-        transaction_logger.ensure_schema(c, TABLES, clock.now)
+    audit.ensure_schema(c)
     return c
 
 
@@ -87,6 +88,8 @@ def create_schema(c):
                   f"VALUES(app_now(),'{t}','D',OLD.{pk},json_object({o}),NULL); END")
     from .recovery import transaction_logger
     transaction_logger.ensure_schema(c, TABLES, clock.now)
+    from . import audit
+    audit.ensure_schema(c)
 
 
 def clone(src_conn, dest_path):

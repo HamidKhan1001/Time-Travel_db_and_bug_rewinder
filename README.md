@@ -46,5 +46,14 @@ The fuzz suite uses a fixed seed (`20261122`) and does not execute generated SQL
 
 GitHub Actions runs the same complete suite on Python 3.11 and 3.12, followed by explicit guard testing, isolated E2E, and a 1K-row benchmark smoke. Historical test and benchmark reports include the commit/date context where applicable and must not be rewritten to imply newer verification.
 
+## Documentation
+
+- Complete HTTP API and SSE stream: [`API.md`](API.md)
+- Recovery and audit persistence lifecycle: [`docs/AUDIT.md`](docs/AUDIT.md)
+- Database limitations: [`DATABASE_LIMITATIONS.md`](DATABASE_LIMITATIONS.md)
+- AI provider setup: [`docs/ai-setup.md`](docs/ai-setup.md)
+
+The core demo is SQLite-only. Optional Gemini and AWS Bedrock providers use structured fallback behavior; PostgreSQL WAL, RDS PITR, RBAC, SSE, and distributed production promotion are not implemented.
+
 ## Not in here yet
 Intent parsing is regex, not an LLM; AWS (Bedrock/Strands/RDS PITR) is not wired. The tools are plain functions so wrapping them with Strands `@tool` is straightforward.
