@@ -2,7 +2,6 @@ import argparse
 import json
 import os
 import platform
-import resource
 import shutil
 import sqlite3
 import statistics
@@ -20,6 +19,11 @@ sys.path.insert(0, ROOT)
 from generate_data import DEFAULT_SEED, generate_dataset
 from timetravel import db
 from timetravel.recovery import change_tracker, recovery_engine
+
+try:
+    import resource
+except ImportError:
+    resource = None
 
 METRICS = (
     "snapshot_seconds",
@@ -82,6 +86,8 @@ def environment_info():
 
 
 def peak_rss_mb():
+    if resource is None:
+        return 0.0
     value = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
     if sys.platform == "darwin":
         return value / (1024 ** 2)

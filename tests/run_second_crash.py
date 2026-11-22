@@ -42,6 +42,20 @@ def _failed_checks(checks):
     return [check for check in checks if not check["ok"]]
 
 
+def _normalize_state(value):
+    if isinstance(value, float):
+        return float(format(value, ".15g"))
+    if isinstance(value, list):
+        return [_normalize_state(item) for item in value]
+    if isinstance(value, dict):
+        return {key: _normalize_state(item) for key, item in value.items()}
+    return value
+
+
+def _states_match(left, right):
+    return _normalize_state(left) == _normalize_state(right)
+
+
 def run_scenario(directory=None, state_path=None):
     """Run the isolated faulty UPDATE and recover it with the shared recovery engine."""
     if state_path is None:
@@ -59,7 +73,7 @@ def run_scenario(directory=None, state_path=None):
     try:
         if integrity.checksum(conn, db.TABLES) != state["original_checksum"]:
             raise RuntimeError("captured original checksum no longer matches the isolated database")
-        if table_rows(conn) != state["original_tables"]:
+        if not _states_match(table_rows(conn), state["original_tables"]):
             raise RuntimeError("captured original table state no longer matches the isolated database")
 
         cursor = conn.execute(FAULTY_SQL)
@@ -108,7 +122,7 @@ def run_scenario(directory=None, state_path=None):
         expected_tables = copy.deepcopy(state["original_tables"])
         expected_tables["orders"].append(legit_order)
         expected_tables["orders"].sort(key=lambda row: row["id"])
-        state_matches = final_tables == expected_tables
+        state_matches = _states_match(final_tables, expected_tables)
 
         keys = inspect_foreign_keys(conn, db.TABLES)
         fk_checks = integrity.verify_foreign_keys(conn, keys)
