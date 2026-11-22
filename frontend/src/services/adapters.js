@@ -18,9 +18,10 @@ export const SCENARIOS = [
   {
     id: 'scenario-2',
     code: 'S02',
-    name: 'Second scenario (not exposed yet)',
-    description: 'A second crash scenario exists in the backend tests but is not reachable through the API yet.',
-    available: false,
+    name: 'Price wipe (missing WHERE in sync_price)',
+    description:
+      'A pricing sync handler runs UPDATE inventory SET price_cents = ? with no WHERE clause and wipes every SKU price to $0 while customers keep ordering.',
+    available: true,
   },
 ]
 
@@ -53,10 +54,11 @@ export function toSnapshot(state, ctx = {}) {
   const { prevStocks = {}, lastAction = null, recovery = null, localLog = [], scenarioId = 'warehouse-wipe' } = ctx
   const incidentRow = state.incident || null
   const patched = Boolean(state.patched)
+  const isPrice = incidentRow?.scenario === 'price_wipe' || (incidentRow?.sql || '').includes('price_cents')
   // The crash stays in the query log after a fix, so "active" means: crash seen, code not patched, and the
   // data is still wiped (most SKUs at zero). A rewind-only recovery restores the data without patching code.
   const skus = state.inventory?.skus ?? 0
-  const wiped = skus > 0 ? (state.inventory?.zero ?? 0) / skus > 0.5 : (state.inventory?.sample || []).every((r) => r.stock === 0)
+  const wiped = isPrice ? !patched : (skus > 0 ? (state.inventory?.zero ?? 0) / skus > 0.5 : (state.inventory?.sample || []).every((r) => r.stock === 0))
   const incidentActive = Boolean(incidentRow) && !patched && wiped
 
   const inventory = (state.inventory?.sample || []).map((row) => {
@@ -95,9 +97,11 @@ export function toSnapshot(state, ctx = {}) {
       }
     })
 
+  const crashLabel = isPrice ? 'Pricing Sync Executed' : 'Warehouse Sync Executed'
+  const actionName = isPrice ? 'Pricing sync' : 'Warehouse sync'
   const log = []
   if (incidentRow) {
-    log.push({ ts: incidentRow.ts, label: `CRASH: Warehouse Sync Executed · touched ${incidentRow.rows_affected} rows`, kind: 'crash' })
+    log.push({ ts: incidentRow.ts, label: `CRASH: ${crashLabel} · touched ${incidentRow.rows_affected} rows`, kind: 'crash' })
   }
   for (const o of state.orders || []) {
     if (crashTs != null && o.created_at >= crashTs) log.push({ ts: o.created_at, label: `Order #${o.id} placed`, kind: 'ok' })
@@ -108,7 +112,7 @@ export function toSnapshot(state, ctx = {}) {
     .map((entry, index) => ({ id: `cl-${index}-${Math.round(entry.ts)}`, time: fmtTime(entry.ts), label: entry.label, kind: entry.kind }))
 
   const derivedAction = incidentActive
-    ? { label: `Warehouse sync · touched ${incidentRow.rows_affected} rows`, tone: 'danger', time: fmtTime(crashTs) }
+    ? { label: `${actionName} · touched ${incidentRow.rows_affected} rows`, tone: 'danger', time: fmtTime(crashTs) }
     : null
 
   return {
