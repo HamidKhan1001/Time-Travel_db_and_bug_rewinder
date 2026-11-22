@@ -70,20 +70,28 @@ class GeminiProvider:
 
         def _call() -> None:
             nonlocal result, error
-            try:
-                from google.genai import types
-                resp = self._client.models.generate_content(
-                    model=self._model,
-                    contents=prompt,
-                    config=types.GenerateContentConfig(
-                        response_mime_type="application/json",
-                        response_json_schema=schema,
-                        temperature=0.1,
-                    ),
-                )
-                result = json.loads(resp.text)
-            except Exception as e:
-                error = e
+            from google.genai import types
+            import time
+            for attempt in range(3):
+                try:
+                    resp = self._client.models.generate_content(
+                        model=self._model,
+                        contents=prompt,
+                        config=types.GenerateContentConfig(
+                            response_mime_type="application/json",
+                            response_json_schema=schema,
+                            temperature=0.1,
+                        ),
+                    )
+                    result = json.loads(resp.text)
+                    error = None
+                    return
+                except Exception as e:
+                    error = e
+                    if attempt < 2 and ("503" in str(e) or "UNAVAILABLE" in str(e)):
+                        time.sleep(1.0)
+                        continue
+                    break
 
         t = threading.Thread(target=_call, daemon=True, name="gemini-call")
         t.start()
