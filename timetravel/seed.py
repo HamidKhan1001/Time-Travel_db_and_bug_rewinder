@@ -55,6 +55,10 @@ def reset():
         c.close()
 
 
+# ---------------------------------------------------------------------------
+# Scenario helpers
+# ---------------------------------------------------------------------------
+
 def demo_orders():
     """Three customers order right after the crash. #1043 buys 3 of a SKU with only 2 left."""
     place = appcode.fn("place_order")
@@ -62,6 +66,28 @@ def demo_orders():
         (1, [{"sku": "APX-0042", "qty": 1}, {"sku": "APX-0100", "qty": 2}]),
         (2, [{"sku": "APX-0555", "qty": 1}]),
         (3, [{"sku": "APX-0777", "qty": 3}]),
+    ]
+    out = []
+    with db.LOCK:
+        c = db.connect()
+        for cid, items in batches:
+            out.append(place(c, {"customer_id": cid, "items": items}))
+        c.close()
+    return out
+
+
+def demo_orders2():
+    """Scenario 2: two customers order right after the price wipe.
+
+    Because sync_price zeroed every price_cents, the orders are captured at $0.
+    After recovery the agent restores the original prices and the orders remain
+    (they are legitimate business events, just priced at $0 during the outage).
+    The merge plan will flag a price-mismatch conflict for the engineer to review.
+    """
+    place = appcode.fn("place_order")
+    batches = [
+        (4, [{"sku": "APX-0042", "qty": 1}]),   # Summit Pro Jacket — normally $189
+        (5, [{"sku": "APX-0100", "qty": 2}]),   # Trailhead Daypack  — normally $74
     ]
     out = []
     with db.LOCK:

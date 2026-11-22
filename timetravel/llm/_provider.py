@@ -70,20 +70,29 @@ class GeminiProvider:
 
         def _call() -> None:
             nonlocal result, error
-            try:
-                from google.genai import types
-                resp = self._client.models.generate_content(
-                    model=self._model,
-                    contents=prompt,
-                    config=types.GenerateContentConfig(
-                        response_mime_type="application/json",
-                        response_json_schema=schema,
-                        temperature=0.1,
-                    ),
-                )
-                result = json.loads(resp.text)
-            except Exception as e:
-                error = e
+            from google.genai import types
+            import time
+            for attempt in range(3):
+                try:
+                    resp = self._client.models.generate_content(
+                        model=self._model,
+                        contents=prompt,
+                        config=types.GenerateContentConfig(
+                            response_mime_type="application/json",
+                            response_json_schema=schema,
+                            temperature=0.1,
+                        ),
+                    )
+                    text = resp.text or "{}"
+                    result = json.loads(text)
+                    error = None
+                    return
+                except Exception as e:
+                    error = e
+                    if attempt < 2 and ("503" in str(e) or "UNAVAILABLE" in str(e)):
+                        time.sleep(1.0)
+                        continue
+                    break
 
         t = threading.Thread(target=_call, daemon=True, name="gemini-call")
         t.start()
@@ -102,10 +111,15 @@ class GeminiProvider:
 
 class BedrockProvider:
     """
-    AWS Bedrock provider using Claude 3 Haiku with Tool Use.
+    AWS Bedrock provider using Claude Haiku 5.5 with Tool Use.
 
     Tool Use forces Claude to fill in a typed form matching our schema —
     equivalent to Gemini's native responseSchema. No manual text parsing.
+
+    Default model: anthropic.claude-haiku-5-5 (Nov 2026, current generation).
+    For cross-region inference profiles prefix with geography:
+      us.anthropic.claude-haiku-5-5  /  eu.anthropic.claude-haiku-5-5
+    Override via TT_BEDROCK_MODEL env var without touching source.
 
     Credentials are picked up automatically by boto3 from:
       AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY + AWS_DEFAULT_REGION
