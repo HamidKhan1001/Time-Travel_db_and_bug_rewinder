@@ -15,7 +15,7 @@ import NotFoundPage from '../pages/NotFoundPage.jsx'
  */
 export default function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, '')}>
       <ToastProvider>
         <DemoProvider>
           <Routes>

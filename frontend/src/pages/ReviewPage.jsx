@@ -110,7 +110,7 @@ export default function ReviewPage() {
           {live && <SmokeChecksCard applied={recovery.applied} />}
           <MergePlanCard plan={plan} />
           <ConflictCard conflict={plan.conflict} />
-          <PatchDiffCard patch={plan.patch} />
+          {plan.patch && <PatchDiffCard patch={plan.patch} />}
         </section>
       </div>
 
@@ -151,12 +151,14 @@ export default function ReviewPage() {
             {plan.stats.kept} kept · {plan.stats.discarded} discarded · {plan.stats.conflicts} conflict resolved
           </SummaryRow>
           <SummaryRow label="Patch">
-            {plan.patch.file} — {plan.patch.verification?.passed ? 'verified on clone' : 'not verified'}
+            {plan.patch
+              ? `${plan.patch.file} — ${plan.patch.verification?.passed ? 'verified on clone' : 'not verified'}`
+              : 'No code change'}
           </SummaryRow>
           <SummaryRow label="Risk">
             {riskPercent(plan.risk.score)} · {level.label}
           </SummaryRow>
-          <SummaryRow label="Legitimate rows lost">{plan.stats.legitimateRowsLost}</SummaryRow>
+          <SummaryRow label="Legitimate rows lost">{plan.stats.legitimateRowsLost ?? '—'}</SummaryRow>
         </div>
       </ConfirmDialog>
 

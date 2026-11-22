@@ -4,7 +4,6 @@ import { ApiError } from './errors.js'
 /**
  * Small fetch wrapper for when the backend is connected.
  * Usage: request('/your/path', { method: 'POST', body: {...} })
- * Paths are intentionally not defined here — agree them with the backend team.
  */
 export async function request(path, { method = 'GET', body, signal, headers } = {}) {
   let response
@@ -23,7 +22,7 @@ export async function request(path, { method = 'GET', body, signal, headers } = 
   const isJson = response.headers.get('content-type')?.includes('application/json')
   const payload = isJson ? await response.json().catch(() => null) : null
   if (!response.ok) {
-    throw new ApiError(payload?.message || `Request failed with status ${response.status}.`, {
+    throw new ApiError(payload?.message || payload?.error || `Request failed with status ${response.status}.`, {
       code: payload?.code || 'HTTP_ERROR',
       status: response.status,
       details: payload,

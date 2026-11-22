@@ -32,18 +32,29 @@ python3 reset.py
 
 ## React frontend (`frontend/`)
 
-`frontend/` contains a separate React + Vite + Tailwind CSS interface built from the Google Stitch designs (Console, Review & approve, Audit log). It sits alongside the existing `web/` dashboard and does not replace it: `server.py`, `web/`, and the tests are unchanged.
+`frontend/` contains a separate React + Vite + Tailwind CSS interface built from the Google Stitch designs (Console, Review & approve, Audit log). It sits alongside the existing `web/` dashboard (which stays at `/`) and talks to the same API.
 
-It currently runs on mock data, so it does not need the Python server. It requires Node.js 20.19+ or 22.12+.
+It requires Node.js 20.19+ or 22.12+ and runs in two modes:
 
 ```bash
 cd frontend
 npm install
-npm run dev
+npm run dev        # mock data, no backend needed (good for design work)
+npm run dev:live   # talks to the real server: run `python3 server.py` in another terminal
 # open http://localhost:5173
 ```
 
-In development, Vite forwards `/api` requests to `http://127.0.0.1:8000` (override with `API_PROXY_TARGET`), so the frontend can call `python3 server.py` once its service layer is connected. Connecting it is a separate step; see [`frontend/README.md`](frontend/README.md) and [`frontend/docs/BACKEND_INTEGRATION.md`](frontend/docs/BACKEND_INTEGRATION.md).
+In development, Vite forwards `/api` requests to `http://127.0.0.1:8000` (override with `API_PROXY_TARGET`). The server also sends CORS headers for `localhost`/`127.0.0.1` origins only.
+
+To serve the React app from the Python server itself (one process, one port):
+
+```bash
+cd frontend && npm install && npm run build:live
+cd .. && python3 server.py
+# open http://localhost:8000/app/   (the original dashboard stays at http://localhost:8000/)
+```
+
+`frontend/src/services/backend.js` calls the API and `frontend/src/services/adapters.js` translates the backend JSON into the shapes the screens read. Details: [`frontend/docs/BACKEND_INTEGRATION.md`](frontend/docs/BACKEND_INTEGRATION.md). Frontend unit tests: `cd frontend && npm test`.
 
 ## Architecture and workflow
 

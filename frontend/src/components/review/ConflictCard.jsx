@@ -25,12 +25,12 @@ export default function ConflictCard({ conflict }) {
       <div className="bg-white/95 p-3.5 rounded-lg border border-amber-200/70 text-[13px] flex flex-col gap-2.5 text-slate-700 mt-3 shadow-xs">
         <div className="flex flex-wrap justify-between items-center gap-2 border-b border-slate-100 pb-2">
           <span className="text-slate-600">
-            Requested Qty: <strong className="text-slate-900 font-mono font-bold text-[14px]">{conflict.requestedQty} units</strong>
+            Requested Qty: <strong className="text-slate-900 font-mono font-bold text-[14px]">{conflict.requestedQty ?? '—'} units</strong>
           </span>
           <span className="text-slate-600">
             Available Post-Rewind:{' '}
             <strong className="text-emerald-800 font-mono font-bold bg-emerald-100 px-2.5 py-0.5 rounded border border-emerald-300 text-[13px]">
-              {conflict.availableQty} units
+              {conflict.availableQty ?? '—'} units
             </strong>
           </span>
         </div>
