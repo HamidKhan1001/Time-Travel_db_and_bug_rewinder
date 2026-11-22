@@ -326,45 +326,6 @@
         }
       }
     },
-    "/api/admin/sync-price": {
-      "post": {
-        "summary": "Pricing sync handler (buggy until patched)",
-        "requestBody": {
-          "required": false,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "sku": {
-                    "type": "string"
-                  },
-                  "price_cents": {
-                    "type": "integer"
-                  }
-                },
-                "required": []
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "{updated_rows}"
-          },
-          "400": {
-            "description": "Bad request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/demo/reset": {
       "post": {
         "summary": "Destructive: reset demo DB, code and audit history",
@@ -385,29 +346,9 @@
         }
       }
     },
-    "/api/demo/crash2": {
-      "post": {
-        "summary": "Trigger the pricing-sync crash (price wipe)",
-        "responses": {
-          "200": {
-            "description": "{updated_rows}"
-          }
-        }
-      }
-    },
     "/api/demo/orders": {
       "post": {
         "summary": "Place demo orders #1041-#1043",
-        "responses": {
-          "200": {
-            "description": "{orders}"
-          }
-        }
-      }
-    },
-    "/api/demo/orders2": {
-      "post": {
-        "summary": "Place demo orders #1041-#1042 during price wipe",
         "responses": {
           "200": {
             "description": "{orders}"

@@ -3,28 +3,18 @@
   rewind_branch_tool      point-in-time branch of the DB
   extract_delta_tool      rows created after the rewind point
   plan_merge_tool         3-way merge plan + conflict/FK resolver + dry run
-  diagnose_and_patch_tool root cause from query log → surgical patch, verified on a clone
+  diagnose_and_patch_tool root cause from query log -> surgical patch, verified on a clone
   apply_recovery_tool     approved cutover with smoke checks (+ undo)
-
-Supported crash scenarios
---------------------------
-  Scenario 1 — stock wipe  : UPDATE inventory SET stock = ?         (sync_stock)
-  Scenario 2 — price wipe  : UPDATE inventory SET price_cents = ?   (sync_price)
-
-The patch/verify pipeline is data-driven via SCENARIO_REGISTRY so adding a
-new scenario only requires registering its descriptor — no branching in the
-tool code itself.
 """
 import difflib
 import os
 import re
 import time
-from typing import Any
 
 from . import appcode, db, guard, llm
 
 INV_UPSERT = ("INSERT INTO inventory(sku,name,stock,price_cents) VALUES(?,?,?,?) "
-              "ON CONFLICT(sku) DO UPDATE SET stock=excluded.stock, price_cents=excluded.price_cents")
+              "ON CONFLICT(sku) DO UPDATE SET stock=excluded.stock")
 CUST_SQL = "INSERT INTO customers(id,name,email) VALUES(?,?,?) ON CONFLICT(id) DO NOTHING"
 ORDER_SQL = ("INSERT INTO orders(id,customer_id,total_cents,status,idem_key,created_at) VALUES(?,?,?,?,?,?) "
              "ON CONFLICT(id) DO NOTHING")
@@ -36,31 +26,11 @@ STATEMENTS = [INV_UPSERT, CUST_SQL, ORDER_SQL, ITEM_SQL, BACKORDER_SQL]
 
 # ---------------------------------------------------------------- incident detection
 def detect_incident(live):
-    """Latest unscoped mass-write in the query log, with its scenario metadata.
-
-    Returns a dict augmented with a 'scenario' key so callers can tell which
-    crash happened without re-inspecting the SQL themselves.
-    """
+    """Latest statement that touched many rows with no WHERE clause."""
     for r in live.execute("SELECT * FROM query_log WHERE rows_affected > 25 ORDER BY ts DESC"):
         if guard.is_unscoped(r["sql"]):
-            row = dict(r)
-            row["scenario"] = _detect_scenario(row["sql"])
-            return row
+            return dict(r)
     return None
-
-
-def _detect_scenario(sql: str) -> str:
-    """Classify an unscoped SQL statement into a named crash scenario.
-
-    Returns a stable string key understood by the UI and patch registry.
-    New scenarios: add an elif branch here and register in SCENARIO_REGISTRY.
-    """
-    sql_upper = sql.upper()
-    if "PRICE_CENTS" in sql_upper:
-        return "price_wipe"
-    if "STOCK" in sql_upper:
-        return "stock_wipe"
-    return "unknown"
 
 
 # ---------------------------------------------------------------- 1. rewind
@@ -100,8 +70,6 @@ def run_checks(conn, expected_stock, preserved_ids):
     out.append({"name": "Foreign keys intact", "ok": not fk, "detail": f"{len(fk)} violations"})
     neg = conn.execute("SELECT COUNT(*) FROM inventory WHERE stock < 0").fetchone()[0]
     out.append({"name": "No negative stock", "ok": neg == 0, "detail": f"{neg} negative rows"})
-    neg_p = conn.execute("SELECT COUNT(*) FROM inventory WHERE price_cents <= 0").fetchone()[0]
-    out.append({"name": "No zero or negative prices", "ok": neg_p == 0, "detail": f"{neg_p} zero/negative rows"})
     got = {r["sku"]: r["stock"] for r in conn.execute("SELECT sku, stock FROM inventory")}
     bad = sum(1 for s, v in expected_stock.items() if got.get(s) != v)
     out.append({"name": "Inventory matches merge plan", "ok": bad == 0, "detail": f"{bad} mismatched SKUs"})
@@ -173,8 +141,7 @@ def plan_merge_tool(live, branch, delta, scratch_path):
     expected = running
     llm.explain_conflicts(conflicts)
     inv_rows = [(s, base[s]["name"], expected[s], base[s]["price_cents"])
-                for s in sorted(expected)
-                if cur.get(s, {}).get("stock") != expected[s] or cur.get(s, {}).get("price_cents") != base[s]["price_cents"]]
+                for s in sorted(expected) if cur.get(s, {}).get("stock") != expected[s]]
     plan = {
         "inventory_rows": inv_rows,
         "customer_rows": [(c["id"], c["name"], c["email"]) for c in delta["customers"]],
@@ -230,110 +197,30 @@ def plan_merge_tool(live, branch, delta, scratch_path):
 
 
 # ---------------------------------------------------------------- 4. diagnose + patch
-SCENARIO_REGISTRY = {
-    "stock_wipe": {
-        "sql_fragment": "UPDATE inventory SET stock = ?",
-        "fn_name": "sync_stock",
-        "col": "stock",
-        "endpoint": "POST /api/admin/sync-stock",
-        "test_payload": {"sku": "APX-0007", "stock": 0},
-        "test_missing": {"stock": 0},
-        "test_name": "Crash payload {sku: APX-0007} touches exactly 1 row",
-    },
-    "price_wipe": {
-        "sql_fragment": "UPDATE inventory SET price_cents = ?",
-        "fn_name": "sync_price",
-        "col": "price_cents",
-        "endpoint": "POST /api/admin/sync-price",
-        "test_payload": {"sku": "APX-0042", "price_cents": 19900},
-        "test_missing": {"price_cents": 19900},
-        "test_name": "Crash payload {sku: APX-0042} touches exactly 1 row",
-    },
-}
-
-
-def _patch_source_for_scenario(src: str, scenario: dict) -> str | None:
-    bad_sql = scenario["sql_fragment"]
-    fn_name = scenario["fn_name"]
-    col = scenario["col"]
+def _patch_source(src, bad_sql):
     lines = src.split("\n")
-
-    in_fn = False
-    idx = None
-    for i, line in enumerate(lines):
-        if line.strip().startswith(f"def {fn_name}("):
-            in_fn = True
-        elif in_fn and line.startswith("def "):
-            break
-        if in_fn and f'"{bad_sql}"' in line and line.strip().startswith("sql"):
-            idx = i
-            break
-
+    idx = next((i for i, l in enumerate(lines) if f'"{bad_sql}"' in l and l.strip().startswith("sql")), None)
     if idx is None:
         return None
-
-    ind_match = re.match(r"\s*", lines[idx])
-    ind = ind_match.group(0) if ind_match else ""
-    aidx = next((j for j in range(idx + 1, min(idx + 5, len(lines)))
+    ind = re.match(r"\s*", lines[idx]).group(0)
+    aidx = next((j for j in range(idx + 1, min(idx + 4, len(lines)))
                  if re.match(r"\s*args\s*=\s*\(", lines[j])), None)
     if aidx is None:
         return None
-
-    arg_match = re.search(r"\((.*?),?\)", lines[aidx])
-    if arg_match is None:
-        return None
-    arg_names = arg_match.group(1)
+    arg_names = re.search(r"\((.*?),?\)", lines[aidx]).group(1)
     lines[idx] = f'{ind}sql = "{bad_sql} WHERE sku = ?"'
     lines[aidx] = f"{ind}args = ({arg_names}, sku)"
-    lines[idx:idx] = [
-        f"{ind}if not sku:",
-        f'{ind}    raise ValueError("sku is required: refusing unscoped {col} update")',
-    ]
+    lines[idx:idx] = [f"{ind}if not sku:", f'{ind}    raise ValueError("sku is required: refusing unscoped inventory update")']
     return "\n".join(lines)
-
-
-def _verify_patch_candidate(candidate_src: str, scenario: dict, branch) -> tuple[bool, list[dict]]:
-    fn_name = scenario["fn_name"]
-    col = scenario["col"]
-    try:
-        ns: dict[str, Any] = {}
-        exec(compile(candidate_src, "patched_handlers", "exec"), ns)
-        sandbox = db.clone(branch, ":memory:")
-        before = {r["sku"]: r[col] for r in sandbox.execute(f"SELECT sku, {col} FROM inventory")}
-        res = ns[fn_name](sandbox, scenario["test_payload"])
-        after = {r["sku"]: r[col] for r in sandbox.execute(f"SELECT sku, {col} FROM inventory")}
-        changed = [s for s in before if before[s] != after[s]]
-        try:
-            ns[fn_name](sandbox, scenario["test_missing"])
-            rejects_missing = False
-        except ValueError:
-            rejects_missing = True
-        sandbox.close()
-
-        expected_sku = scenario["test_payload"]["sku"]
-        t_list = [
-            {"name": scenario["test_name"],
-             "ok": res.get("updated_rows") == 1 and changed == [expected_sku],
-             "detail": f"{res.get('updated_rows')} row(s) updated"},
-            {"name": "Payload without sku is rejected", "ok": rejects_missing, "detail": "ValueError raised"},
-        ]
-        return all(t["ok"] for t in t_list), t_list
-    except Exception as e:
-        return False, [{"name": "Patch execution on sandbox clone", "ok": False, "detail": str(e)}]
 
 
 def diagnose_and_patch_tool(live, branch, incident):
     if not incident:
         return {"found": False, "explanation": "No unscoped mass-write found in the query log."}
     src = appcode.read_source()
-    scenario_key = incident.get("scenario", _detect_scenario(incident["sql"]))
-    scenario = SCENARIO_REGISTRY.get(scenario_key, SCENARIO_REGISTRY["stock_wipe"])
-
     out = {"found": True, "incident_sql": incident["sql"], "source": incident["source"],
            "rows_affected": incident["rows_affected"], "at": incident["ts"],
-           "scenario": scenario_key,
            "guard_verdict": guard.analyze(incident["sql"])}
-
     # --- LLM patch attempt (primary) ---
     patched = None
     llm_patch = llm.propose_patch(
@@ -347,20 +234,44 @@ def diagnose_and_patch_tool(live, branch, incident):
         out["patch_source"] = "llm"
         out["_llm_explanation"] = llm_patch.explanation
     else:
-        patched = _patch_source_for_scenario(src, scenario)
+        patched = _patch_source(src, incident["sql"])
         out["patch_source"] = "regex"
 
     if not patched:
-        out["explanation"] = f"Offending query located in the log but no safe automatic patch available for {scenario_key}."
+        out["explanation"] = "Offending query located in the log but no safe automatic patch available."
         out["patch_ok"] = False
         return out
 
-    patch_ok, tests = _verify_patch_candidate(patched, scenario, branch)
+    def _verify_candidate(candidate_src):
+        try:
+            ns = {}
+            exec(compile(candidate_src, "patched_handlers", "exec"), ns)
+            sandbox = db.clone(branch, ":memory:")
+            before = {r["sku"]: r["stock"] for r in sandbox.execute("SELECT sku, stock FROM inventory")}
+            res = ns["sync_stock"](sandbox, {"sku": "APX-0007", "stock": 0})
+            after = {r["sku"]: r["stock"] for r in sandbox.execute("SELECT sku, stock FROM inventory")}
+            changed = [s for s in before if before[s] != after[s]]
+            try:
+                ns["sync_stock"](sandbox, {"stock": 0})
+                rejects_missing = False
+            except ValueError:
+                rejects_missing = True
+            sandbox.close()
+            t_list = [
+                {"name": "Crash payload {sku: APX-0007, stock: 0} touches exactly 1 row",
+                 "ok": res.get("updated_rows") == 1 and changed == ["APX-0007"], "detail": f"{res.get('updated_rows')} row(s) updated"},
+                {"name": "Payload without sku is rejected", "ok": rejects_missing, "detail": "ValueError raised"},
+            ]
+            return all(t["ok"] for t in t_list), t_list
+        except Exception as e:
+            return False, [{"name": "Patch execution on sandbox clone", "ok": False, "detail": str(e)}]
+
+    patch_ok, tests = _verify_candidate(patched)
     # If LLM patch failed sandbox verification, fall back to deterministic regex patch
     if not patch_ok and out.get("patch_source") == "llm":
-        fallback_patched = _patch_source_for_scenario(src, scenario)
+        fallback_patched = _patch_source(src, incident["sql"])
         if fallback_patched:
-            fb_ok, fb_tests = _verify_patch_candidate(fallback_patched, scenario, branch)
+            fb_ok, fb_tests = _verify_candidate(fallback_patched)
             if fb_ok:
                 patched = fallback_patched
                 patch_ok, tests = fb_ok, fb_tests
@@ -370,13 +281,12 @@ def diagnose_and_patch_tool(live, branch, incident):
     diff = "".join(difflib.unified_diff(src.splitlines(True), patched.splitlines(True),
                                          "a/app/handlers.py", "b/app/handlers.py"))
 
-    col_name = scenario["col"]
     out.update({
         "patch_ok": patch_ok, "diff": diff, "patched_source": patched, "tests": tests,
         "explanation": out.pop("_llm_explanation", None) or (
-            f"The endpoint ({incident['source']}) ran `{incident['sql']}` with no WHERE clause. "
-            f"It was meant to set {col_name} for one SKU, but it overwrote {col_name} on all "
-            f"{incident['rows_affected']:,} rows. The fix scopes the UPDATE to "
+            f"The warehouse-sync endpoint ({incident['source']}) ran `{incident['sql']}` with no WHERE clause. "
+            f"It was meant to set the count for one SKU, but it overwrote stock on all "
+            f"{incident['rows_affected']:,} rows with the feed value (0). The fix scopes the UPDATE to "
             f"`WHERE sku = ?` and rejects requests that omit the SKU."
         ),
     })

@@ -23,10 +23,8 @@ APP_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "frontend", "
 MIME = {".html": "text/html; charset=utf-8", ".js": "application/javascript; charset=utf-8",
         ".css": "text/css; charset=utf-8", ".svg": "image/svg+xml", ".png": "image/png",
         ".json": "application/json", ".ico": "image/x-icon", ".map": "application/json"}
-# place_order() already contains "WHERE sku = ?", so only the scoped sync statements prove the bugs are fixed.
-PATCHED_STOCK_MARK = "UPDATE inventory SET stock = ? WHERE sku = ?"
-PATCHED_PRICE_MARK = "UPDATE inventory SET price_cents = ? WHERE sku = ?"
-PATCHED_MARK = PATCHED_STOCK_MARK
+# place_order() already contains "WHERE sku = ?", so only the scoped sync_stock statement proves the bug is fixed.
+PATCHED_MARK = "UPDATE inventory SET stock = ? WHERE sku = ?"
 LOCAL_ORIGIN = re.compile(r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$")
 
 
@@ -94,13 +92,8 @@ def api_state():
         evts = c.execute("SELECT COUNT(*) FROM changelog").fetchone()[0]
         c.close()
     src = appcode.read_source()
-    patched_stock = PATCHED_STOCK_MARK in src
-    patched_price = PATCHED_PRICE_MARK in src
-    incident_is_price = inc and inc.get("scenario") == "price_wipe"
-    is_patched = patched_price if incident_is_price else patched_stock
     return {"now": db.clock.now(), "inventory": {"skus": inv["n"], "units": inv["u"], "zero": inv["z"], "sample": sample},
-            "orders": orders, "incident": inc, "order_dots": dots, "patched": is_patched,
-            "patched_stock": patched_stock, "patched_price": patched_price,
+            "orders": orders, "incident": inc, "order_dots": dots, "patched": PATCHED_MARK in src,
             "warm": {**WARM, "events": evts}}
 
 
@@ -123,23 +116,12 @@ def post(path, body):
                 return appcode.fn("sync_stock")(c, body)
             finally:
                 c.close()
-    if path == "/api/admin/sync-price":
-        with db.LOCK:
-            c = db.connect()
-            try:
-                return appcode.fn("sync_price")(c, body)
-            finally:
-                c.close()
     if path == "/api/demo/reset":
         agent.SESSIONS.clear(); seed.reset(); return {"ok": True}
     if path == "/api/demo/crash":     # the warehouse feed marks ONE sku sold out -> buggy handler wipes all
         return post("/api/admin/sync-stock", {"sku": "APX-0007", "stock": 0})
-    if path == "/api/demo/crash2":    # pricing feed zeroes out all prices
-        return post("/api/admin/sync-price", {"sku": "APX-0042", "price_cents": 0})
     if path == "/api/demo/orders":
         return {"orders": seed.demo_orders()}
-    if path == "/api/demo/orders2":
-        return {"orders": seed.demo_orders2()}
     if path == "/api/rewind":
         return {"id": agent.start(body.get("prompt", "")).id}
     for action in ("approve", "discard", "undo"):
@@ -263,18 +245,12 @@ class H(BaseHTTPRequestHandler):
                 return
             if self.path == "/api/health":
                 return self._send(200, health())
-            if self.path in ("/", "/index.html"):          # the React app is the primary UI
+            if self.path in ("/", "/index.html"):          # the React app is the only UI
                 self.send_response(302)
                 self.send_header("Location", "/app/")
                 self.send_header("Content-Length", "0")
                 self.end_headers()
                 return
-            if self.path in ("/demo", "/demo/", "/demo/index.html"):  # classic SPA (second crash scenario demo)
-                _web = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web", "index.html")
-                if os.path.exists(_web):
-                    with open(_web, "rb") as _fh:
-                        return self._send(200, _fh.read(), MIME[".html"])
-                return self._send(404, {"error": "classic demo UI not found"})
             if self.path == "/api/state":
                 return self._send(200, api_state())
 
