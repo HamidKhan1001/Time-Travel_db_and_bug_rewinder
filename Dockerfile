@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # ---- 1. build the React UI (live mode: talks to the API on the same origin) ----
-FROM node:22-alpine AS ui
+FROM node:26-alpine AS ui
 WORKDIR /ui
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
