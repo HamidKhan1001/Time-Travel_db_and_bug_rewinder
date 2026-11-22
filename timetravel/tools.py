@@ -19,6 +19,7 @@ import difflib
 import os
 import re
 import time
+from typing import Any
 
 from . import appcode, db, guard, llm
 
@@ -271,13 +272,17 @@ def _patch_source_for_scenario(src: str, scenario: dict) -> str | None:
     if idx is None:
         return None
 
-    ind = re.match(r"\s*", lines[idx]).group(0)
+    ind_match = re.match(r"\s*", lines[idx])
+    ind = ind_match.group(0) if ind_match else ""
     aidx = next((j for j in range(idx + 1, min(idx + 5, len(lines)))
                  if re.match(r"\s*args\s*=\s*\(", lines[j])), None)
     if aidx is None:
         return None
 
-    arg_names = re.search(r"\((.*?),?\)", lines[aidx]).group(1)
+    arg_match = re.search(r"\((.*?),?\)", lines[aidx])
+    if arg_match is None:
+        return None
+    arg_names = arg_match.group(1)
     lines[idx] = f'{ind}sql = "{bad_sql} WHERE sku = ?"'
     lines[aidx] = f"{ind}args = ({arg_names}, sku)"
     lines[idx:idx] = [
@@ -291,7 +296,7 @@ def _verify_patch_candidate(candidate_src: str, scenario: dict, branch) -> tuple
     fn_name = scenario["fn_name"]
     col = scenario["col"]
     try:
-        ns = {}
+        ns: dict[str, Any] = {}
         exec(compile(candidate_src, "patched_handlers", "exec"), ns)
         sandbox = db.clone(branch, ":memory:")
         before = {r["sku"]: r[col] for r in sandbox.execute(f"SELECT sku, {col} FROM inventory")}

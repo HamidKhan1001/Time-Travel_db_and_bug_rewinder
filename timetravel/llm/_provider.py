@@ -83,7 +83,8 @@ class GeminiProvider:
                             temperature=0.1,
                         ),
                     )
-                    result = json.loads(resp.text)
+                    text = resp.text or "{}"
+                    result = json.loads(text)
                     error = None
                     return
                 except Exception as e:
