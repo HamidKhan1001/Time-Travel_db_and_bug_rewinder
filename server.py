@@ -142,7 +142,7 @@ class H(BaseHTTPRequestHandler):
         """Serve the built React app under /app/, falling back to index.html for client-side routes."""
         index = os.path.join(APP_DIR, "index.html")
         if not os.path.exists(index):
-            return self._send(404, {"error": "React app is not built. Run: cd frontend && npm install && npm run build"})
+            return self._send(404, {"error": "React app is not built. Run: cd frontend && npm install && npm run build:live"})
         rel = url_path[len("/app"):].lstrip("/")
         target = os.path.realpath(os.path.join(APP_DIR, rel))
         root = os.path.realpath(APP_DIR)
@@ -261,6 +261,9 @@ class H(BaseHTTPRequestHandler):
 
     def do_POST(self):
         try:
+            origin = self.headers.get("Origin")
+            if origin and not LOCAL_ORIGIN.match(origin):      # a web page on another site must not drive this API
+                return self._send(403, {"error": "cross-origin requests are not allowed"})
             n = int(self.headers.get("Content-Length") or 0)
             body = json.loads(self.rfile.read(n) or b"{}")
             self._send(200, post(self.path, body))

@@ -19,6 +19,21 @@ class TestLLMFallback(unittest.TestCase):
         self.assertTrue(r.before_incident)
         self.assertIsNone(r.rewind_seconds)
 
+    def test_before_phrasings(self):
+        for text in ("revert to immediately prior to the sync", "go back to before the warehouse sync",
+                     "restore the state prior to the outage"):
+            self.assertTrue(parse_intent_regex(text).before_incident, text)
+        self.assertFalse(parse_intent_regex("the sync ran before lunch").before_incident)
+
+    def test_console_default_prompt_is_understood(self):
+        # Must match DEFAULT_PROMPT in frontend/src/constants/defaults.js
+        r = parse_intent_regex("The warehouse sync wiped inventory while 3 orders came in. Take the business back "
+                               "to before the crash, keep the 3 orders, and fix the bug that caused it.")
+        self.assertTrue(r.before_incident)
+        self.assertTrue(r.remediate)
+        self.assertEqual((r.preserve, r.preserve_count), (["orders"], 3))
+        self.assertIsNone(r.rewind_seconds)
+
     def test_remediate(self):
         r = parse_intent_regex("fix the bug and keep the orders")
         self.assertTrue(r.remediate)

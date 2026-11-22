@@ -73,9 +73,17 @@ class AuditApiTests(unittest.TestCase):
         self.record("INC-AAA111", "undo_completed", "completed", {})
         self.assertEqual(self.summaries()[0]["status"], "undone")
 
+    def test_failed_apply_after_a_plan_exists_is_not_terminal(self):
+        self.finished_session("INC-AAA111", "recovery_failed", "failed")      # apply failed, plan still actionable
+        self.assertEqual(self.summaries(), [])
+        self.record("INC-BBB222", "recovery_initiated", "started", {"prompt": "x"})
+        self.record("INC-BBB222", "recovery_failed", "failed", {})            # pipeline failed before any plan
+        self.assertEqual(self.summaries()[0]["status"], "failed")
+
     def test_filter_and_stats(self):
         self.finished_session("INC-AAA111", "recovery_completed", "completed", prompt="nightly feed")
-        self.finished_session("INC-BBB222", "recovery_failed", "failed", prompt="other thing")
+        self.record("INC-BBB222", "recovery_initiated", "started", {"prompt": "other thing"})
+        self.record("INC-BBB222", "recovery_failed", "failed", {})          # pipeline failure, no plan
         self.finished_session("INC-CCC333", "recovery_discarded", "rejected")
         rows = self.summaries()
         self.assertEqual([r["id"] for r in audit.filter_recoveries(rows, search="nightly")], ["INC-AAA111"])
@@ -146,6 +154,36 @@ class AuditApiTests(unittest.TestCase):
         with urllib.request.urlopen(preflight, timeout=3) as response:
             self.assertEqual(response.status, 204)
             self.assertIn("POST", response.headers["Access-Control-Allow-Methods"])
+
+    def test_post_from_a_foreign_origin_is_rejected(self):
+        base = self.serve()
+        def post(origin):
+            headers = {"Content-Type": "application/json"}
+            if origin:
+                headers["Origin"] = origin
+            return urllib.request.Request(f"{base}/api/demo/orders", data=b"{}", method="POST", headers=headers)
+        with self.assertRaises(urllib.error.HTTPError) as blocked:
+            urllib.request.urlopen(post("https://evil.example"), timeout=3)
+        self.assertEqual(blocked.exception.code, 403)
+        with self.assertRaises(urllib.error.HTTPError) as allowed:            # passes the origin check, fails later on empty DB
+            urllib.request.urlopen(post("http://localhost:5173"), timeout=3)
+        self.assertNotEqual(allowed.exception.code, 403)
+
+    def test_undo_keeps_audit_rows_even_if_the_code_restore_fails(self):
+        session = agent.Session("rewind")
+        agent.SESSIONS[session.id] = session
+        session.phase = "applied"
+        self.record(session.id, "recovery_completed", "completed", {})
+        snapshot = os.path.join(self.tmp.name, f"backup_{session.id}.db")
+        conn = db.connect(snapshot)
+        db.create_schema(conn)                     # a snapshot taken BEFORE the audit row above existed
+        conn.close()
+        # no backup_<id>.py exists, so the second undo step raises after the DB snapshot replaced live
+        with self.assertRaises(Exception):
+            agent.undo(session.id)
+        types = [e["event_type"] for e in agent.audit_events(session.id)]
+        self.assertIn("recovery_completed", types)
+        self.assertIn("undo_failed", types)
 
     def test_app_route_serves_404_message_when_not_built_and_blocks_traversal(self):
         base = self.serve()
