@@ -5,7 +5,7 @@ import time
 from .. import db
 from . import dependencies, integrity, verification
 from .integrity import RecoveryConflictError
-from .recovery_planner import RecoveryPlan, build_plan_after_event, build_plan_after_timestamp
+from .recovery_planner import build_plan_after_event, build_plan_after_timestamp
 
 
 def _quote(identifier):

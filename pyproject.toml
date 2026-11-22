@@ -1,0 +1,18 @@
+# Tooling configuration only. The project itself is not packaged; run it with `python3 server.py`.
+
+[tool.ruff]
+target-version = "py311"
+# app/ and seed/ hold the intentionally buggy demo handler (the bug IS the demo), so they are not linted.
+extend-exclude = ["app", "seed", "frontend", "data", "test-reports"]
+
+[tool.ruff.lint]
+# Real bugs only (syntax errors, undefined names, unused imports/variables). Style rules can be added later.
+select = ["E9", "F"]
+
+[tool.coverage.run]
+source = ["timetravel", "server.py"]
+branch = true
+
+[tool.coverage.report]
+show_missing = false
+skip_covered = false

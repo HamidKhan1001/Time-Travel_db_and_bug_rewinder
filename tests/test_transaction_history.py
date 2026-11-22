@@ -6,7 +6,7 @@ import unittest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from timetravel import appcode, db
-from timetravel.recovery import change_tracker, recovery_engine, transaction_logger
+from timetravel.recovery import change_tracker, recovery_engine
 
 
 class TransactionHistoryTests(unittest.TestCase):

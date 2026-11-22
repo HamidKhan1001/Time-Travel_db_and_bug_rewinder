@@ -2,10 +2,9 @@
 import hashlib
 import json
 from dataclasses import dataclass
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Optional, Tuple
 
 from . import change_tracker
-from .change_tracker import ChangeEvent
 from .dependencies import (
     DependencyEdge,
     ForeignKey,

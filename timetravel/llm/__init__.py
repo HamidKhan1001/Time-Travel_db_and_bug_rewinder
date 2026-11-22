@@ -32,7 +32,7 @@ from ._config import LLMConfig
 from ._fallback import parse_intent_regex
 from ._provider import LLMProvider, make_provider
 from ._tasks import (
-    IntentResult,
+    IntentResult,  # noqa: F401  (re-exported; tests and callers import it from timetravel.llm)
     PatchResult,
     explain_conflict_llm,
     parse_intent_llm,

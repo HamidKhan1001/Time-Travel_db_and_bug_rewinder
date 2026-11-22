@@ -1,5 +1,4 @@
 import os
-import subprocess
 import sys
 import tempfile
 import unittest
@@ -11,7 +10,6 @@ from timetravel.recovery import (
     UnsupportedRelationshipError,
     change_tracker,
     recovery_engine,
-    recovery_planner,
     verification,
 )
 from timetravel.recovery.integrity import RecoveryConflictError
