@@ -1,7 +1,7 @@
 # Devlog — Time-Travel DB & Bug Rewinder
 > Historical planning and phase notes. Several entries describe earlier project states and are superseded by [`README.md`](../README.md), [`API.md`](../API.md), [`PERFORMANCE.md`](PERFORMANCE.md), [`AUDIT.md`](AUDIT.md), and [`DATABASE_LIMITATIONS.md`](DATABASE_LIMITATIONS.md). Do not read the gap lists below as current status.
 >
-> Last updated: 2026-11-22 · Submission deadline: 2026-12-12
+> Last updated: 2026-11-22 (latest entry at the bottom) · Submission deadline: 2026-12-12
 
 ---
 
@@ -247,3 +247,48 @@ Hammad's Task 3 contribution (commit `758298d`) added the production recovery en
 benchmarks, second crash scenario, integrity verification, and architecture docs.
 It was originally pushed directly to `main`; this PR exists so the work can be
 reviewed explicitly.
+
+---
+
+## 2026-11-22: Frontend-backend integration, quality gate, repo structure (PRs #8 and #9)
+
+**Integration**
+- React UI now talks to the real server. `npm run dev` = mocks, `npm run dev:live` = real API. `frontend/src/services/adapters.js` turns backend JSON into the shapes the screens read (pure, unit-tested).
+- `server.py` serves the built UI at `/app/`; `/` redirects there. The legacy `web/` dashboard and its tests were removed.
+- New API: `GET /api/audit`, `/api/audit/summary`, `/api/audit/<id>`, `POST /api/session/<id>/discard`, `GET /api/health`. Every response has `X-Request-Id`; requests are logged. Optional bearer token via `TT_API_TOKEN`; `HOST` is configurable.
+- `docs/openapi.json` plus a contract test that fails if the spec and `server.py` disagree.
+
+**Bugs found by testing the real flow (all fixed, each with a regression test)**
+- Undo restored an old DB snapshot and erased the session's audit events. Audit rows are now re-inserted, even if the code restore fails.
+- `/api/state` always reported `patched: true` because `place_order()` contains `WHERE sku = ?`.
+- Approve was enabled when the merge dry run failed but the patch tests passed.
+- A failed apply (plan still actionable) was shown as a terminal failure in the audit log.
+- The console's pre-filled prompt could not be parsed by the rule-based parser, so the first demo click failed. Parser now accepts "prior to the sync" phrasing; default prompt changed to one that rewinds, keeps orders and fixes the bug.
+- Any `KeyError` in a POST handler was reported as `404 unknown route`; a missing field is now `400`.
+- A web page on another origin could POST to the local API (for example `/api/demo/reset`); non-local origins now get 403.
+- Smaller: double-click on Discard, incident banner after a rewind-only recovery, errored runs showing every step done.
+
+**Quality gate (CI)**
+- ruff, mypy (26 files clean), Python tests on 3.11 and 3.12 with a coverage floor of 75% (measured 81%), intent evals, ESLint, frontend unit tests, Playwright end-to-end, Docker build and health check, `pip-audit` and `npm audit`, then one **Quality gate** job.
+- Playwright drives the real UI against the real server: crash, rewind, approve, patched re-run (touches 1 row), audit log, undo, discard.
+- `hamid_bot` (`.github/workflows/hamid_bot.yml`, reusable) approves low-risk PRs after the gate. It never approves forks, drafts, Dependabot, or changes to `.github/`, `timetravel/guard.py`, `pyproject.toml`, `requirements*.txt`, `frontend/package*.json`. Verified on GitHub: declined on a PR touching `.github/`, approved a docs-only test PR once the repo setting "Allow GitHub Actions to create and approve pull requests" was on.
+
+**AI evals**
+- `evals/` holds 24 hand-labelled prompts. The rule-based parser gets 16/24: perfect on plain phrasing and units, 1/7 on paraphrases ("half an hour ago", "preserve the orders", "do not fix anything"). `baseline.json` makes regressions fail. The live-LLM path has not been scored; run `python3 evals/run_evals.py --llm` with a key.
+
+**Structure and docs**
+- Analysis docs, benchmark evidence (`test-reports/` -> `docs/evidence/`), PRD and the CLI demo moved out of the repo root. Five requirements files replaced by `pyproject.toml` extras (`gemini`, `bedrock`, `ai`, `dev`).
+- Added Dockerfile and compose (non-root, health check, loopback-only port), `docs/ARCHITECTURE.md` with diagrams, six ADRs in `docs/adr/`, CONTRIBUTING, SECURITY, CHANGELOG, CODEOWNERS, Dependabot, PR template. README rewritten.
+- Repo description and topics set on GitHub.
+
+**Process notes**
+- PR #8 was merged after its first commit only, so later commits pushed to that branch were not in `main` and CI never ran on them. They were re-submitted in PR #9. Check `gh pr view <n> --json state` before pushing more to a PR branch.
+- One full-suite run once showed 2 failures that did not recur in the 6+ full runs after it; cause not identified.
+
+**Still open**
+- Score the live LLM path with a real key (Gemini or Bedrock).
+- PostgreSQL logical decoding / RDS point-in-time recovery spike (documented as proposed only).
+- Show `recovery_preview`, `actual_recovery` and `verification` in the React screens (the old dashboard did; the API still returns them).
+- Second crash scenario is not reachable from the UI.
+- Require the Quality gate check in branch protection for `main`.
+- Sessions are in memory; no per-user identity, so the audit log cannot say who approved.
