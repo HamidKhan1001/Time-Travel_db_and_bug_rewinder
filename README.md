@@ -30,6 +30,21 @@ python3 reset.py
 
 `reset.py` deletes generated demo databases in `data/`, restores the intentionally buggy handler, and recreates the schema. Do not run it against data you want to keep.
 
+## React frontend (`frontend/`)
+
+`frontend/` contains a separate React + Vite + Tailwind CSS interface built from the Google Stitch designs (Console, Review & approve, Audit log). It sits alongside the existing `web/` dashboard and does not replace it: `server.py`, `web/`, and the tests are unchanged.
+
+It currently runs on mock data, so it does not need the Python server. It requires Node.js 20.19+ or 22.12+.
+
+```bash
+cd frontend
+npm install
+npm run dev
+# open http://localhost:5173
+```
+
+In development, Vite forwards `/api` requests to `http://127.0.0.1:8000` (override with `API_PROXY_TARGET`), so the frontend can call `python3 server.py` once its service layer is connected. Connecting it is a separate step; see [`frontend/README.md`](frontend/README.md) and [`frontend/docs/BACKEND_INTEGRATION.md`](frontend/docs/BACKEND_INTEGRATION.md).
+
 ## Architecture and workflow
 
 - `timetravel/db.py` installs row-level `changelog` triggers on the four registered business tables: `customers`, `inventory`, `orders`, and `order_items`. This is logical trigger capture, not SQLite WAL journaling.

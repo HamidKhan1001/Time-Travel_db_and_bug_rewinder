@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<meta content="web_standard" name="shell-type"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+    @layer base {
+      html, body { margin: 0; padding: 0; }
+      body { overscroll-behavior: none; }
+      main > :first-child { margin-top: 0 !important; }
+      main > :last-child { margin-bottom: 0 !important; }
+    }
+    ::-webkit-scrollbar { display: none; }
+  </style>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            surface: {
+              DEFAULT: "#ffffff",
+              ground: "#f8fafc",
+              subtle: "#f1f5f9",
+              border: "#e2e8f0",
+              borderStrong: "#cbd5e1"
+            },
+            brand: {
+              50: "#eef2ff",
+              100: "#e0e7ff",
+              500: "#6366f1",
+              600: "#4f46e5",
+              700: "#4338ca",
+            }
+          },
+          boxShadow: {
+            'card': '0 1px 3px 0 rgba(15, 23, 42, 0.05), 0 1px 2px -1px rgba(15, 23, 42, 0.05)',
+            'card-hover': '0 10px 25px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -4px rgba(15, 23, 42, 0.04)',
+            'glow-indigo': '0 0 20px -3px rgba(99, 102, 241, 0.25)',
+          }
+        }
+      }
+    };
+  </script>
+</head>
+<body class="bg-surface-ground font-sans text-slate-800 antialiased selection:bg-brand-500/10 selection:text-brand-600">
+<!-- Top Navigation Header -->
+<header class="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-xl border-b border-surface-border">
+<div class="h-14 w-full px-6 flex items-center justify-between gap-4">
+<div class="flex items-center gap-6">
+<a class="flex items-center gap-2.5 group" data-path="console" href="#">
+<div class="w-7 h-7 bg-gradient-to-tr from-brand-600 to-indigo-500 flex items-center justify-center rounded-lg shadow-sm shadow-indigo-500/30 group-hover:scale-105 transition-transform duration-200">
+<span class="material-symbols-outlined text-white text-[16px]">history</span>
+</div>
+<span class="font-semibold text-slate-900 text-sm tracking-tight flex items-center gap-2">
+            Time-Travel DB
+            <span class="text-slate-400 font-normal font-mono text-xs hidden sm:inline">&amp; Bug Rewinder</span>
+</span>
+</a>
+<nav class="flex items-center gap-1.5 ml-2" data-active-classes="bg-brand-50 text-brand-600 font-semibold shadow-sm border border-brand-100">
+<a class="px-3 py-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 font-medium text-xs transition-colors" data-path="console" href="#">Console</a>
+<a aria-current="page" class="px-3 py-1.5 rounded-lg transition-all flex items-center gap-2 bg-brand-50 text-brand-600 font-semibold border border-brand-100/80 text-xs shadow-sm shadow-indigo-100" data-path="audit-log" href="#">
+            Audit log
+            <span class="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold bg-brand-600 text-white shadow-xs">3</span>
+</a>
+</nav>
+</div>
+<div class="flex items-center gap-2.5">
+<div class="flex items-center gap-2 px-2.5 py-1 rounded-full bg-rose-50/80 border border-rose-200/60 text-xs font-mono font-semibold shadow-2xs">
+<span class="relative flex h-2 w-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+</span>
+<span class="text-rose-600 text-[11px] tracking-wide">LIVE DB</span>
+</div>
+<div class="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200/60 text-xs font-medium text-emerald-700">
+<span class="material-symbols-outlined text-[15px] text-emerald-600">verified_user</span>
+<span class="text-[11px]">Guard on</span>
+</div>
+<button class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-surface-border bg-white hover:bg-slate-50 text-slate-600 hover:text-slate-900 text-xs font-medium transition-all shadow-xs">
+<span class="material-symbols-outlined text-[15px] text-slate-400">rotate_left</span>
+          Reset demo
+        </button>
+<div class="w-8 h-8 rounded-full bg-gradient-to-tr from-slate-800 to-slate-700 flex items-center justify-center text-white ring-2 ring-white shadow-xs">
+<span class="material-symbols-outlined text-[17px]">person</span>
+</div>
+</div>
+</div>
+</header>
+<!-- Main Content Layout -->
+<main class="w-full pt-14 bg-surface-ground min-h-screen">
+<div class="flex flex-col w-full min-h-[calc(100vh-3.5rem)] p-4 sm:p-6 lg:p-8 max-w-[1440px] mx-auto">
+<!-- Page Header & Metrics Section -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-7">
+<div>
+<div class="flex items-center gap-1.5 text-xs font-mono font-semibold tracking-wider text-brand-600 uppercase mb-2">
+<span class="material-symbols-outlined text-[15px]">terminal</span>
+<span>Telemetry Archive // S10</span>
+</div>
+<h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-3">
+            Audit log
+            <span class="text-xs font-mono font-medium px-2.5 py-0.5 rounded-md bg-slate-100 text-slate-600 border border-slate-200/80">v2.4.1</span>
+</h1>
+<p class="text-slate-500 text-sm mt-1.5 max-w-xl">
+            Every time-travel recovery, what it changed, and its outcome across edge cluster replicas.
+          </p>
+</div>
+<!-- Quick Stats Metric Micro-cards -->
+<div class="flex items-center gap-3 self-stretch md:self-auto">
+<!-- Total Recoveries Card -->
+<div class="flex-1 md:flex-initial px-4 py-3 bg-white border border-surface-border rounded-xl shadow-card flex flex-col justify-center min-w-[150px] relative overflow-hidden group hover:border-slate-300 transition-colors">
+<div class="absolute -right-4 -bottom-4 w-14 h-14 bg-brand-50 rounded-full opacity-60 pointer-events-none group-hover:scale-125 transition-transform duration-300"></div>
+<div class="flex items-center justify-between mb-1">
+<span class="text-[11px] font-mono uppercase tracking-wider text-slate-400 font-semibold">Total Recoveries</span>
+<span class="material-symbols-outlined text-[16px] text-slate-400">history_toggle_off</span>
+</div>
+<div class="flex items-baseline gap-2">
+<span class="text-2xl font-bold font-mono text-slate-900 tracking-tight">1,482</span>
+<span class="text-[11px] font-mono text-emerald-600 font-semibold flex items-center">+12 today</span>
+</div>
+</div>
+<!-- Success Rate Card -->
+<div class="flex-1 md:flex-initial px-4 py-3 bg-white border border-surface-border rounded-xl shadow-card flex flex-col justify-center min-w-[150px] relative overflow-hidden group hover:border-slate-300 transition-colors">
+<div class="absolute -right-4 -bottom-4 w-14 h-14 bg-emerald-50 rounded-full opacity-60 pointer-events-none group-hover:scale-125 transition-transform duration-300"></div>
+<div class="flex items-center justify-between mb-1">
+<span class="text-[11px] font-mono uppercase tracking-wider text-slate-400 font-semibold">Success Rate</span>
+<span class="material-symbols-outlined text-[16px] text-emerald-500">task_alt</span>
+</div>
+<div class="flex items-baseline gap-1.5">
+<span class="text-2xl font-bold font-mono text-emerald-600 tracking-tight">99.4%</span>
+<span class="text-[10px] font-mono bg-emerald-100/70 text-emerald-800 px-1.5 py-0.5 rounded font-semibold">TARGET 99.0%</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Filter & Controls Toolbar -->
+<div class="bg-white border border-surface-border rounded-xl p-3 sm:p-4 mb-5 flex flex-col lg:flex-row gap-3 items-stretch lg:items-center justify-between shadow-card">
+<div class="flex flex-1 flex-col sm:flex-row gap-3">
+<!-- Search Input -->
+<div class="relative flex-1 group">
+<span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-brand-600 transition-colors">
+<span class="material-symbols-outlined text-[18px]">search</span>
+</span>
+<input class="w-full bg-slate-50/80 hover:bg-slate-50 focus:bg-white border border-surface-border focus:border-brand-500 rounded-lg text-slate-800 pl-10 pr-4 py-2 text-xs font-mono placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-brand-500/10 transition-all" placeholder="Search prompts, IDs, or diff signatures..." type="text"/>
+</div>
+<!-- Status Select -->
+<div class="relative w-full sm:w-44">
+<select class="w-full bg-slate-50/80 hover:bg-slate-50 focus:bg-white border border-surface-border focus:border-brand-500 rounded-lg text-slate-700 pl-3.5 pr-8 py-2 text-xs font-medium appearance-none focus:outline-none focus:ring-4 focus:ring-brand-500/10 transition-all cursor-pointer">
+<option value="">Status: All</option>
+<option value="applied">Applied (Green)</option>
+<option value="undone">Undone (Blue)</option>
+<option value="discarded">Discarded (Grey)</option>
+</select>
+<span class="absolute inset-y-0 right-0 pr-2.5 flex items-center pointer-events-none text-slate-400">
+<span class="material-symbols-outlined text-[18px]">unfold_more</span>
+</span>
+</div>
+<!-- Scenario Select -->
+<div class="relative w-full sm:w-52">
+<select class="w-full bg-slate-50/80 hover:bg-slate-50 focus:bg-white border border-surface-border focus:border-brand-500 rounded-lg text-slate-700 pl-3.5 pr-8 py-2 text-xs font-medium appearance-none focus:outline-none focus:ring-4 focus:ring-brand-500/10 transition-all cursor-pointer">
+<option value="">Scenario: All</option>
+<option value="auth-overflow">Auth Token Overflow</option>
+<option value="db-deadlock">DB Deadlock / Pool</option>
+<option value="race-condition">Race Condition Fix</option>
+</select>
+<span class="absolute inset-y-0 right-0 pr-2.5 flex items-center pointer-events-none text-slate-400">
+<span class="material-symbols-outlined text-[18px]">unfold_more</span>
+</span>
+</div>
+</div>
+<!-- Actions -->
+<div class="flex items-center gap-2 self-end lg:self-auto">
+<button class="px-4 py-2 bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white rounded-lg text-xs font-semibold shadow-sm hover:shadow-brand-500/25 transition-all duration-150 flex items-center gap-1.5 focus:ring-4 focus:ring-brand-500/20">
+<span class="material-symbols-outlined text-[16px]">tune</span>
+            Apply Filters
+          </button>
+<button class="p-2 bg-slate-50 hover:bg-slate-100 border border-surface-border rounded-lg text-slate-500 hover:text-slate-800 transition-colors" title="Reset Filters">
+<span class="material-symbols-outlined text-[17px]">restart_alt</span>
+</button>
+</div>
+</div>
+<!-- Data Table Card Container -->
+<div class="bg-white border border-surface-border rounded-xl shadow-card overflow-hidden">
+<div class="overflow-x-auto w-full">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-slate-50/90 border-b border-surface-border text-[11px] font-mono uppercase tracking-wider text-slate-500 select-none">
+<th class="py-3 px-4 font-semibold">ID</th>
+<th class="py-3 px-4 font-semibold">Status</th>
+<th class="py-3 px-4 font-semibold">Timestamp</th>
+<th class="py-3 px-4 font-semibold">Scenario</th>
+<th class="py-3 px-4 font-semibold">Request Prompt</th>
+<th class="py-3 px-4 font-semibold">Rewind Point</th>
+<th class="py-3 px-4 font-semibold">Delta (K/D/C)</th>
+<th class="py-3 px-4 font-semibold">Lost</th>
+<th class="py-3 px-4 font-semibold">Risk</th>
+<th class="py-3 px-4 font-semibold">Duration</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-slate-100 text-xs font-mono">
+<!-- Row 1 -->
+<tr class="hover:bg-slate-50/80 transition-colors cursor-pointer group" onclick="window.location.href='#detail-s11'">
+<td class="py-3.5 px-4 font-semibold text-brand-600 group-hover:text-brand-700 flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[14px] text-slate-300 group-hover:text-brand-500 transition-colors">commit</span>
+                  R-0007
+                </td>
+<td class="py-3.5 px-4 font-sans">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80 shadow-2xs">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                    Applied
+                  </span>
+</td>
+<td class="py-3.5 px-4 text-slate-400 font-normal">2023-10-24 <span class="text-slate-600 font-medium">14:22:01</span></td>
+<td class="py-3.5 px-4 font-sans font-medium text-slate-800">Auth Token Overflow</td>
+<td class="py-3.5 px-4 max-w-xs font-sans text-slate-500 truncate group-hover:text-slate-800 transition-colors">
+                  Fix JWT parsing vulnerability in edge worker...
+                </td>
+<td class="py-3.5 px-4">
+<span class="px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-mono text-[11px] border border-slate-200/60 font-medium">#c89f21a</span>
+</td>
+<td class="py-3.5 px-4">
+<div class="flex items-center gap-1 text-[11px]">
+<span class="text-emerald-600 font-semibold">14</span>
+<span class="text-slate-300">/</span>
+<span class="text-rose-600 font-semibold">2</span>
+<span class="text-slate-300">/</span>
+<span class="text-slate-400">0</span>
+</div>
+</td>
+<td class="py-3.5 px-4">
+<span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-50 text-emerald-700 font-semibold text-[11px] border border-emerald-200/60">0</span>
+</td>
+<td class="py-3.5 px-4">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+<span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                    0.12
+                  </span>
+</td>
+<td class="py-3.5 px-4 text-slate-500 font-medium">142ms</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-slate-50/80 transition-colors cursor-pointer group" onclick="window.location.href='#detail-s11'">
+<td class="py-3.5 px-4 font-semibold text-brand-600 group-hover:text-brand-700 flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[14px] text-slate-300 group-hover:text-brand-500 transition-colors">commit</span>
+                  R-0006
+                </td>
+<td class="py-3.5 px-4 font-sans">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200/80 shadow-2xs">
+<span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                    Undone
+                  </span>
+</td>
+<td class="py-3.5 px-4 text-slate-400 font-normal">2023-10-24 <span class="text-slate-600 font-medium">13:10:45</span></td>
+<td class="py-3.5 px-4 font-sans font-medium text-slate-800">DB Deadlock / Pool</td>
+<td class="py-3.5 px-4 max-w-xs font-sans text-slate-500 truncate group-hover:text-slate-800 transition-colors">
+                  Increase connection timeout pool threshold to 5000...
+                </td>
+<td class="py-3.5 px-4">
+<span class="px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-mono text-[11px] border border-slate-200/60 font-medium">#4af901b</span>
+</td>
+<td class="py-3.5 px-4">
+<div class="flex items-center gap-1 text-[11px]">
+<span class="text-emerald-600 font-semibold">8</span>
+<span class="text-slate-300">/</span>
+<span class="text-rose-600 font-semibold">12</span>
+<span class="text-slate-300">/</span>
+<span class="text-amber-600 font-semibold">1</span>
+</div>
+</td>
+<td class="py-3.5 px-4">
+<span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-50 text-emerald-700 font-semibold text-[11px] border border-emerald-200/60">0</span>
+</td>
+<td class="py-3.5 px-4">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+<span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                    0.85
+                  </span>
+</td>
+<td class="py-3.5 px-4 text-slate-500 font-medium">310ms</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-slate-50/80 transition-colors cursor-pointer group" onclick="window.location.href='#detail-s11'">
+<td class="py-3.5 px-4 font-semibold text-brand-600 group-hover:text-brand-700 flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[14px] text-slate-300 group-hover:text-brand-500 transition-colors">commit</span>
+                  R-0005
+                </td>
+<td class="py-3.5 px-4 font-sans">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-600 border border-slate-200">
+<span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+                    Discarded
+                  </span>
+</td>
+<td class="py-3.5 px-4 text-slate-400 font-normal">2023-10-24 <span class="text-slate-600 font-medium">11:05:12</span></td>
+<td class="py-3.5 px-4 font-sans font-medium text-slate-800">Race Condition Fix</td>
+<td class="py-3.5 px-4 max-w-xs font-sans text-slate-500 truncate group-hover:text-slate-800 transition-colors">
+                  Apply optimistic locking to inventory table updates...
+                </td>
+<td class="py-3.5 px-4">
+<span class="px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-mono text-[11px] border border-slate-200/60 font-medium">#992ea4c</span>
+</td>
+<td class="py-3.5 px-4">
+<div class="flex items-center gap-1 text-[11px]">
+<span class="text-slate-400">0</span>
+<span class="text-slate-300">/</span>
+<span class="text-rose-600 font-semibold">45</span>
+<span class="text-slate-300">/</span>
+<span class="text-amber-600 font-semibold">3</span>
+</div>
+</td>
+<td class="py-3.5 px-4">
+<span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-50 text-emerald-700 font-semibold text-[11px] border border-emerald-200/60">0</span>
+</td>
+<td class="py-3.5 px-4">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
+<span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+                    0.04
+                  </span>
+</td>
+<td class="py-3.5 px-4 text-slate-500 font-medium">88ms</td>
+</tr>
+<!-- Row 4 -->
+<tr class="hover:bg-slate-50/80 transition-colors cursor-pointer group" onclick="window.location.href='#detail-s11'">
+<td class="py-3.5 px-4 font-semibold text-brand-600 group-hover:text-brand-700 flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[14px] text-slate-300 group-hover:text-brand-500 transition-colors">commit</span>
+                  R-0004
+                </td>
+<td class="py-3.5 px-4 font-sans">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80 shadow-2xs">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                    Applied
+                  </span>
+</td>
+<td class="py-3.5 px-4 text-slate-400 font-normal">2023-10-23 <span class="text-slate-600 font-medium">22:40:19</span></td>
+<td class="py-3.5 px-4 font-sans font-medium text-slate-800">Cache Layer Purge</td>
+<td class="py-3.5 px-4 max-w-xs font-sans text-slate-500 truncate group-hover:text-slate-800 transition-colors">
+                  Invalidate stale redis cache keys for user profiles...
+                </td>
+<td class="py-3.5 px-4">
+<span class="px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-mono text-[11px] border border-slate-200/60 font-medium">#120bc77</span>
+</td>
+<td class="py-3.5 px-4">
+<div class="flex items-center gap-1 text-[11px]">
+<span class="text-emerald-600 font-semibold">32</span>
+<span class="text-slate-300">/</span>
+<span class="text-slate-400">0</span>
+<span class="text-slate-300">/</span>
+<span class="text-slate-400">0</span>
+</div>
+</td>
+<td class="py-3.5 px-4">
+<span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-50 text-emerald-700 font-semibold text-[11px] border border-emerald-200/60">0</span>
+</td>
+<td class="py-3.5 px-4">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                    0.01
+                  </span>
+</td>
+<td class="py-3.5 px-4 text-slate-500 font-medium">65ms</td>
+</tr>
+<!-- Row 5 -->
+<tr class="hover:bg-slate-50/80 transition-colors cursor-pointer group" onclick="window.location.href='#detail-s11'">
+<td class="py-3.5 px-4 font-semibold text-brand-600 group-hover:text-brand-700 flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[14px] text-slate-300 group-hover:text-brand-500 transition-colors">commit</span>
+                  R-0003
+                </td>
+<td class="py-3.5 px-4 font-sans">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80 shadow-2xs">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                    Applied
+                  </span>
+</td>
+<td class="py-3.5 px-4 text-slate-400 font-normal">2023-10-23 <span class="text-slate-600 font-medium">18:15:30</span></td>
+<td class="py-3.5 px-4 font-sans font-medium text-slate-800">Schema Migration Patch</td>
+<td class="py-3.5 px-4 max-w-xs font-sans text-slate-500 truncate group-hover:text-slate-800 transition-colors">
+                  Add missing index on orders table foreign keys...
+                </td>
+<td class="py-3.5 px-4">
+<span class="px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-mono text-[11px] border border-slate-200/60 font-medium">#883fa10</span>
+</td>
+<td class="py-3.5 px-4">
+<div class="flex items-center gap-1 text-[11px]">
+<span class="text-emerald-600 font-semibold">5</span>
+<span class="text-slate-300">/</span>
+<span class="text-rose-600 font-semibold">1</span>
+<span class="text-slate-300">/</span>
+<span class="text-slate-400">0</span>
+</div>
+</td>
+<td class="py-3.5 px-4">
+<span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-50 text-emerald-700 font-semibold text-[11px] border border-emerald-200/60">0</span>
+</td>
+<td class="py-3.5 px-4">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+<span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                    0.34
+                  </span>
+</td>
+<td class="py-3.5 px-4 text-slate-500 font-medium">215ms</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Table Pagination Footer -->
+<div class="flex flex-col sm:flex-row items-center justify-between py-3.5 px-5 bg-slate-50/80 border-t border-surface-border gap-3">
+<div class="flex items-center gap-2 text-xs text-slate-500 font-mono">
+<span class="inline-block w-2 h-2 rounded-full bg-slate-300"></span>
+            Showing <span class="font-semibold text-slate-700">1–5</span> of <span class="font-semibold text-slate-700">1,482</span> recoveries
+          </div>
+<div class="flex items-center gap-2">
+<button class="px-3 py-1.5 bg-white border border-surface-border rounded-lg text-slate-400 text-xs font-mono font-medium disabled:opacity-50 disabled:cursor-not-allowed shadow-2xs hover:bg-slate-50 transition-colors" disabled="">
+              Previous
+            </button>
+<div class="flex items-center px-3 py-1.5 bg-white border border-surface-border rounded-lg text-xs font-mono font-semibold text-slate-700 shadow-2xs">
+<span class="text-brand-600">1</span>
+<span class="text-slate-300 mx-1.5">/</span>
+<span class="text-slate-500">297</span>
+</div>
+<button class="px-3 py-1.5 bg-white border border-surface-border rounded-lg text-slate-700 hover:text-slate-900 hover:bg-slate-50 text-xs font-mono font-medium shadow-2xs transition-colors">
+              Next
+            </button>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>
