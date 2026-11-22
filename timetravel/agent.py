@@ -1,6 +1,5 @@
 """Orchestrator: parses the request, drives the tools, streams events, enforces the HITL gate."""
 import os
-import re
 import threading
 import time
 import uuid

@@ -1,7 +1,6 @@
 """Integrity validation for recovery plans and recovered database state."""
 import json
 from . import dependencies, verification
-from .recovery_planner import RecoveryPlan
 
 
 class RecoveryConflictError(RuntimeError):
