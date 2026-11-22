@@ -1,0 +1,880 @@
+{
+  "all_pass": true,
+  "generated_at_unix": 1795372054.8752165,
+  "python": "3.13.1 (tags/v3.13.1:0671451, Dec  3 2024, 19:06:28) [MSC v.1942 64 bit (AMD64)]",
+  "rehearsal_count": 5,
+  "rehearsals": [
+    {
+      "inventory": {
+        "audit": {
+          "event_count": 6,
+          "event_types": [
+            "recovery_initiated",
+            "recovery_preview_generated",
+            "approval_granted",
+            "recovery_execution_started",
+            "integrity_verified",
+            "recovery_completed"
+          ]
+        },
+        "crash": {
+          "detected_incident_rows": 1420,
+          "post_crash_inventory_units": 0,
+          "post_crash_order_ids": [
+            {
+              "order_id": 1041,
+              "total_cents": 33700
+            },
+            {
+              "order_id": 1042,
+              "total_cents": 5900
+            },
+            {
+              "order_id": 1043,
+              "total_cents": 74700
+            }
+          ],
+          "updated_rows": 1420
+        },
+        "initial_state": {
+          "inventory_units": 163393,
+          "orders": 40,
+          "skus": 1420
+        },
+        "pass": true,
+        "recovery": {
+          "approval_requested": true,
+          "checks_all_ok": true,
+          "checks_count": 4,
+          "final_inventory_units": 163387,
+          "phase": "applied",
+          "preserved_orders": [
+            [
+              1041,
+              "paid"
+            ],
+            [
+              1042,
+              "paid"
+            ],
+            [
+              1043,
+              "backorder"
+            ]
+          ],
+          "preview_generated": true
+        },
+        "returncode": 0,
+        "stderr_tail": "",
+        "stdout": "INVENTORY_REHEARSAL PASS",
+        "undo": {
+          "buggy_source_restored": true,
+          "phase": "undone"
+        },
+        "verification": {
+          "dry_run_ok": true,
+          "patched_handler_updated_rows": 1,
+          "zero_stock_rows_after_patched_handler": 2
+        }
+      },
+      "orders": {
+        "audit": {
+          "recovery_actions": [
+            {
+              "count": 4,
+              "op": "U",
+              "run_id": 1,
+              "status": "applied",
+              "tbl": "orders"
+            }
+          ],
+          "recovery_runs": [
+            {
+              "detail": "ok",
+              "id": 1,
+              "selection": "event-id",
+              "status": "committed",
+              "step_count": 4
+            }
+          ]
+        },
+        "crash": {
+          "affected_count": 4,
+          "affected_tables": [
+            "orders"
+          ],
+          "faulty_rowcount": 4,
+          "faulty_sql": "UPDATE orders SET status = 'cancelled'",
+          "faulty_transaction_id": 7,
+          "legitimate_transaction_id": 8
+        },
+        "initial_state": {
+          "anchor_event_id": 6,
+          "customers": 2,
+          "orders": [
+            {
+              "id": 2001,
+              "status": "paid"
+            },
+            {
+              "id": 2002,
+              "status": "pending"
+            },
+            {
+              "id": 2003,
+              "status": "shipped"
+            },
+            {
+              "id": 2004,
+              "status": "paid"
+            }
+          ]
+        },
+        "pass": true,
+        "recovery": {
+          "final_orders": [
+            {
+              "id": 2001,
+              "status": "paid"
+            },
+            {
+              "id": 2002,
+              "status": "pending"
+            },
+            {
+              "id": 2003,
+              "status": "shipped"
+            },
+            {
+              "id": 2004,
+              "status": "paid"
+            },
+            {
+              "id": 2005,
+              "status": "paid"
+            }
+          ],
+          "selected_transaction_ids": [
+            7
+          ],
+          "status": "PASS",
+          "steps_applied": 4
+        },
+        "undo": {
+          "applicable": false,
+          "reason": "direct recovery-engine workflow"
+        },
+        "unexpected": [],
+        "verification": {
+          "checksum_match": true,
+          "foreign_keys_ok": true,
+          "integrity_status": "VERIFIED",
+          "legitimate_order_preserved": true,
+          "original_statuses_restored": true,
+          "state_matches_expected": true
+        }
+      },
+      "overall": "PASS",
+      "rehearsal": 1,
+      "unexpected": []
+    },
+    {
+      "inventory": {
+        "audit": {
+          "event_count": 6,
+          "event_types": [
+            "recovery_initiated",
+            "recovery_preview_generated",
+            "approval_granted",
+            "recovery_execution_started",
+            "integrity_verified",
+            "recovery_completed"
+          ]
+        },
+        "crash": {
+          "detected_incident_rows": 1420,
+          "post_crash_inventory_units": 0,
+          "post_crash_order_ids": [
+            {
+              "order_id": 1041,
+              "total_cents": 33700
+            },
+            {
+              "order_id": 1042,
+              "total_cents": 5900
+            },
+            {
+              "order_id": 1043,
+              "total_cents": 74700
+            }
+          ],
+          "updated_rows": 1420
+        },
+        "initial_state": {
+          "inventory_units": 163393,
+          "orders": 40,
+          "skus": 1420
+        },
+        "pass": true,
+        "recovery": {
+          "approval_requested": true,
+          "checks_all_ok": true,
+          "checks_count": 4,
+          "final_inventory_units": 163387,
+          "phase": "applied",
+          "preserved_orders": [
+            [
+              1041,
+              "paid"
+            ],
+            [
+              1042,
+              "paid"
+            ],
+            [
+              1043,
+              "backorder"
+            ]
+          ],
+          "preview_generated": true
+        },
+        "returncode": 0,
+        "stderr_tail": "",
+        "stdout": "INVENTORY_REHEARSAL PASS",
+        "undo": {
+          "buggy_source_restored": true,
+          "phase": "undone"
+        },
+        "verification": {
+          "dry_run_ok": true,
+          "patched_handler_updated_rows": 1,
+          "zero_stock_rows_after_patched_handler": 2
+        }
+      },
+      "orders": {
+        "audit": {
+          "recovery_actions": [
+            {
+              "count": 4,
+              "op": "U",
+              "run_id": 1,
+              "status": "applied",
+              "tbl": "orders"
+            }
+          ],
+          "recovery_runs": [
+            {
+              "detail": "ok",
+              "id": 1,
+              "selection": "event-id",
+              "status": "committed",
+              "step_count": 4
+            }
+          ]
+        },
+        "crash": {
+          "affected_count": 4,
+          "affected_tables": [
+            "orders"
+          ],
+          "faulty_rowcount": 4,
+          "faulty_sql": "UPDATE orders SET status = 'cancelled'",
+          "faulty_transaction_id": 7,
+          "legitimate_transaction_id": 8
+        },
+        "initial_state": {
+          "anchor_event_id": 6,
+          "customers": 2,
+          "orders": [
+            {
+              "id": 2001,
+              "status": "paid"
+            },
+            {
+              "id": 2002,
+              "status": "pending"
+            },
+            {
+              "id": 2003,
+              "status": "shipped"
+            },
+            {
+              "id": 2004,
+              "status": "paid"
+            }
+          ]
+        },
+        "pass": true,
+        "recovery": {
+          "final_orders": [
+            {
+              "id": 2001,
+              "status": "paid"
+            },
+            {
+              "id": 2002,
+              "status": "pending"
+            },
+            {
+              "id": 2003,
+              "status": "shipped"
+            },
+            {
+              "id": 2004,
+              "status": "paid"
+            },
+            {
+              "id": 2005,
+              "status": "paid"
+            }
+          ],
+          "selected_transaction_ids": [
+            7
+          ],
+          "status": "PASS",
+          "steps_applied": 4
+        },
+        "undo": {
+          "applicable": false,
+          "reason": "direct recovery-engine workflow"
+        },
+        "unexpected": [],
+        "verification": {
+          "checksum_match": true,
+          "foreign_keys_ok": true,
+          "integrity_status": "VERIFIED",
+          "legitimate_order_preserved": true,
+          "original_statuses_restored": true,
+          "state_matches_expected": true
+        }
+      },
+      "overall": "PASS",
+      "rehearsal": 2,
+      "unexpected": []
+    },
+    {
+      "inventory": {
+        "audit": {
+          "event_count": 6,
+          "event_types": [
+            "recovery_initiated",
+            "recovery_preview_generated",
+            "approval_granted",
+            "recovery_execution_started",
+            "integrity_verified",
+            "recovery_completed"
+          ]
+        },
+        "crash": {
+          "detected_incident_rows": 1420,
+          "post_crash_inventory_units": 0,
+          "post_crash_order_ids": [
+            {
+              "order_id": 1041,
+              "total_cents": 33700
+            },
+            {
+              "order_id": 1042,
+              "total_cents": 5900
+            },
+            {
+              "order_id": 1043,
+              "total_cents": 74700
+            }
+          ],
+          "updated_rows": 1420
+        },
+        "initial_state": {
+          "inventory_units": 163393,
+          "orders": 40,
+          "skus": 1420
+        },
+        "pass": true,
+        "recovery": {
+          "approval_requested": true,
+          "checks_all_ok": true,
+          "checks_count": 4,
+          "final_inventory_units": 163387,
+          "phase": "applied",
+          "preserved_orders": [
+            [
+              1041,
+              "paid"
+            ],
+            [
+              1042,
+              "paid"
+            ],
+            [
+              1043,
+              "backorder"
+            ]
+          ],
+          "preview_generated": true
+        },
+        "returncode": 0,
+        "stderr_tail": "",
+        "stdout": "INVENTORY_REHEARSAL PASS",
+        "undo": {
+          "buggy_source_restored": true,
+          "phase": "undone"
+        },
+        "verification": {
+          "dry_run_ok": true,
+          "patched_handler_updated_rows": 1,
+          "zero_stock_rows_after_patched_handler": 2
+        }
+      },
+      "orders": {
+        "audit": {
+          "recovery_actions": [
+            {
+              "count": 4,
+              "op": "U",
+              "run_id": 1,
+              "status": "applied",
+              "tbl": "orders"
+            }
+          ],
+          "recovery_runs": [
+            {
+              "detail": "ok",
+              "id": 1,
+              "selection": "event-id",
+              "status": "committed",
+              "step_count": 4
+            }
+          ]
+        },
+        "crash": {
+          "affected_count": 4,
+          "affected_tables": [
+            "orders"
+          ],
+          "faulty_rowcount": 4,
+          "faulty_sql": "UPDATE orders SET status = 'cancelled'",
+          "faulty_transaction_id": 7,
+          "legitimate_transaction_id": 8
+        },
+        "initial_state": {
+          "anchor_event_id": 6,
+          "customers": 2,
+          "orders": [
+            {
+              "id": 2001,
+              "status": "paid"
+            },
+            {
+              "id": 2002,
+              "status": "pending"
+            },
+            {
+              "id": 2003,
+              "status": "shipped"
+            },
+            {
+              "id": 2004,
+              "status": "paid"
+            }
+          ]
+        },
+        "pass": true,
+        "recovery": {
+          "final_orders": [
+            {
+              "id": 2001,
+              "status": "paid"
+            },
+            {
+              "id": 2002,
+              "status": "pending"
+            },
+            {
+              "id": 2003,
+              "status": "shipped"
+            },
+            {
+              "id": 2004,
+              "status": "paid"
+            },
+            {
+              "id": 2005,
+              "status": "paid"
+            }
+          ],
+          "selected_transaction_ids": [
+            7
+          ],
+          "status": "PASS",
+          "steps_applied": 4
+        },
+        "undo": {
+          "applicable": false,
+          "reason": "direct recovery-engine workflow"
+        },
+        "unexpected": [],
+        "verification": {
+          "checksum_match": true,
+          "foreign_keys_ok": true,
+          "integrity_status": "VERIFIED",
+          "legitimate_order_preserved": true,
+          "original_statuses_restored": true,
+          "state_matches_expected": true
+        }
+      },
+      "overall": "PASS",
+      "rehearsal": 3,
+      "unexpected": []
+    },
+    {
+      "inventory": {
+        "audit": {
+          "event_count": 6,
+          "event_types": [
+            "recovery_initiated",
+            "recovery_preview_generated",
+            "approval_granted",
+            "recovery_execution_started",
+            "integrity_verified",
+            "recovery_completed"
+          ]
+        },
+        "crash": {
+          "detected_incident_rows": 1420,
+          "post_crash_inventory_units": 0,
+          "post_crash_order_ids": [
+            {
+              "order_id": 1041,
+              "total_cents": 33700
+            },
+            {
+              "order_id": 1042,
+              "total_cents": 5900
+            },
+            {
+              "order_id": 1043,
+              "total_cents": 74700
+            }
+          ],
+          "updated_rows": 1420
+        },
+        "initial_state": {
+          "inventory_units": 163393,
+          "orders": 40,
+          "skus": 1420
+        },
+        "pass": true,
+        "recovery": {
+          "approval_requested": true,
+          "checks_all_ok": true,
+          "checks_count": 4,
+          "final_inventory_units": 163387,
+          "phase": "applied",
+          "preserved_orders": [
+            [
+              1041,
+              "paid"
+            ],
+            [
+              1042,
+              "paid"
+            ],
+            [
+              1043,
+              "backorder"
+            ]
+          ],
+          "preview_generated": true
+        },
+        "returncode": 0,
+        "stderr_tail": "",
+        "stdout": "INVENTORY_REHEARSAL PASS",
+        "undo": {
+          "buggy_source_restored": true,
+          "phase": "undone"
+        },
+        "verification": {
+          "dry_run_ok": true,
+          "patched_handler_updated_rows": 1,
+          "zero_stock_rows_after_patched_handler": 2
+        }
+      },
+      "orders": {
+        "audit": {
+          "recovery_actions": [
+            {
+              "count": 4,
+              "op": "U",
+              "run_id": 1,
+              "status": "applied",
+              "tbl": "orders"
+            }
+          ],
+          "recovery_runs": [
+            {
+              "detail": "ok",
+              "id": 1,
+              "selection": "event-id",
+              "status": "committed",
+              "step_count": 4
+            }
+          ]
+        },
+        "crash": {
+          "affected_count": 4,
+          "affected_tables": [
+            "orders"
+          ],
+          "faulty_rowcount": 4,
+          "faulty_sql": "UPDATE orders SET status = 'cancelled'",
+          "faulty_transaction_id": 7,
+          "legitimate_transaction_id": 8
+        },
+        "initial_state": {
+          "anchor_event_id": 6,
+          "customers": 2,
+          "orders": [
+            {
+              "id": 2001,
+              "status": "paid"
+            },
+            {
+              "id": 2002,
+              "status": "pending"
+            },
+            {
+              "id": 2003,
+              "status": "shipped"
+            },
+            {
+              "id": 2004,
+              "status": "paid"
+            }
+          ]
+        },
+        "pass": true,
+        "recovery": {
+          "final_orders": [
+            {
+              "id": 2001,
+              "status": "paid"
+            },
+            {
+              "id": 2002,
+              "status": "pending"
+            },
+            {
+              "id": 2003,
+              "status": "shipped"
+            },
+            {
+              "id": 2004,
+              "status": "paid"
+            },
+            {
+              "id": 2005,
+              "status": "paid"
+            }
+          ],
+          "selected_transaction_ids": [
+            7
+          ],
+          "status": "PASS",
+          "steps_applied": 4
+        },
+        "undo": {
+          "applicable": false,
+          "reason": "direct recovery-engine workflow"
+        },
+        "unexpected": [],
+        "verification": {
+          "checksum_match": true,
+          "foreign_keys_ok": true,
+          "integrity_status": "VERIFIED",
+          "legitimate_order_preserved": true,
+          "original_statuses_restored": true,
+          "state_matches_expected": true
+        }
+      },
+      "overall": "PASS",
+      "rehearsal": 4,
+      "unexpected": []
+    },
+    {
+      "inventory": {
+        "audit": {
+          "event_count": 6,
+          "event_types": [
+            "recovery_initiated",
+            "recovery_preview_generated",
+            "approval_granted",
+            "recovery_execution_started",
+            "integrity_verified",
+            "recovery_completed"
+          ]
+        },
+        "crash": {
+          "detected_incident_rows": 1420,
+          "post_crash_inventory_units": 0,
+          "post_crash_order_ids": [
+            {
+              "order_id": 1041,
+              "total_cents": 33700
+            },
+            {
+              "order_id": 1042,
+              "total_cents": 5900
+            },
+            {
+              "order_id": 1043,
+              "total_cents": 74700
+            }
+          ],
+          "updated_rows": 1420
+        },
+        "initial_state": {
+          "inventory_units": 163393,
+          "orders": 40,
+          "skus": 1420
+        },
+        "pass": true,
+        "recovery": {
+          "approval_requested": true,
+          "checks_all_ok": true,
+          "checks_count": 4,
+          "final_inventory_units": 163387,
+          "phase": "applied",
+          "preserved_orders": [
+            [
+              1041,
+              "paid"
+            ],
+            [
+              1042,
+              "paid"
+            ],
+            [
+              1043,
+              "backorder"
+            ]
+          ],
+          "preview_generated": true
+        },
+        "returncode": 0,
+        "stderr_tail": "",
+        "stdout": "INVENTORY_REHEARSAL PASS",
+        "undo": {
+          "buggy_source_restored": true,
+          "phase": "undone"
+        },
+        "verification": {
+          "dry_run_ok": true,
+          "patched_handler_updated_rows": 1,
+          "zero_stock_rows_after_patched_handler": 2
+        }
+      },
+      "orders": {
+        "audit": {
+          "recovery_actions": [
+            {
+              "count": 4,
+              "op": "U",
+              "run_id": 1,
+              "status": "applied",
+              "tbl": "orders"
+            }
+          ],
+          "recovery_runs": [
+            {
+              "detail": "ok",
+              "id": 1,
+              "selection": "event-id",
+              "status": "committed",
+              "step_count": 4
+            }
+          ]
+        },
+        "crash": {
+          "affected_count": 4,
+          "affected_tables": [
+            "orders"
+          ],
+          "faulty_rowcount": 4,
+          "faulty_sql": "UPDATE orders SET status = 'cancelled'",
+          "faulty_transaction_id": 7,
+          "legitimate_transaction_id": 8
+        },
+        "initial_state": {
+          "anchor_event_id": 6,
+          "customers": 2,
+          "orders": [
+            {
+              "id": 2001,
+              "status": "paid"
+            },
+            {
+              "id": 2002,
+              "status": "pending"
+            },
+            {
+              "id": 2003,
+              "status": "shipped"
+            },
+            {
+              "id": 2004,
+              "status": "paid"
+            }
+          ]
+        },
+        "pass": true,
+        "recovery": {
+          "final_orders": [
+            {
+              "id": 2001,
+              "status": "paid"
+            },
+            {
+              "id": 2002,
+              "status": "pending"
+            },
+            {
+              "id": 2003,
+              "status": "shipped"
+            },
+            {
+              "id": 2004,
+              "status": "paid"
+            },
+            {
+              "id": 2005,
+              "status": "paid"
+            }
+          ],
+          "selected_transaction_ids": [
+            7
+          ],
+          "status": "PASS",
+          "steps_applied": 4
+        },
+        "undo": {
+          "applicable": false,
+          "reason": "direct recovery-engine workflow"
+        },
+        "unexpected": [],
+        "verification": {
+          "checksum_match": true,
+          "foreign_keys_ok": true,
+          "integrity_status": "VERIFIED",
+          "legitimate_order_preserved": true,
+          "original_statuses_restored": true,
+          "state_matches_expected": true
+        }
+      },
+      "overall": "PASS",
+      "rehearsal": 5,
+      "unexpected": []
+    }
+  ],
+  "repository": "C:\\Users\\msaad\\AppData\\Local\\Temp\\opencode\\Time-Travel_db_and_bug_rewinder",
+  "sqlite": "3.45.3"
+}

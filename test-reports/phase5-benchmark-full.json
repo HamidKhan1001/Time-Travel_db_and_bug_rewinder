@@ -1,0 +1,410 @@
+{
+  "datasets": [
+    {
+      "dataset_rows": 1000,
+      "errors": [],
+      "runs": [
+        {
+          "apply_seconds": 0.08885510000254726,
+          "audit_status": "committed",
+          "checksum_verification_seconds": 0.029191900001023896,
+          "commit_seconds": 0.0056460999985574745,
+          "database_bytes": 1572864,
+          "dataset_rows": 1000,
+          "event_count": 1000,
+          "execute_plan_seconds": 0.4387281000017538,
+          "faulty_transaction_id": 2,
+          "integrity_status": "VERIFIED",
+          "iteration": 1,
+          "peak_rss_mb_end": 0.0,
+          "peak_rss_mb_start": 0.0,
+          "plan_step_count": 1000,
+          "preflight_seconds": 0.25507089999882737,
+          "recovery_duration_seconds": 0.483839500004251,
+          "recovery_execution_seconds": 0.4095362000007299,
+          "recovery_planning_seconds": 0.014921100002538878,
+          "rows_checked": 1050,
+          "rss_growth_mb": 0.0,
+          "seed": 20261122,
+          "simulation_seconds": 0.05657539999810979,
+          "snapshot_bytes": 507904,
+          "snapshot_seconds": 0.008607700001448393,
+          "transaction_history_seconds": 0.017508099997940008,
+          "unaccounted_seconds": 0.004074500000569969
+        },
+        {
+          "apply_seconds": 0.09023739999975078,
+          "audit_status": "committed",
+          "checksum_verification_seconds": 0.026344400001107715,
+          "commit_seconds": 0.005021700002544094,
+          "database_bytes": 1572864,
+          "dataset_rows": 1000,
+          "event_count": 1000,
+          "execute_plan_seconds": 0.418498200000613,
+          "faulty_transaction_id": 2,
+          "integrity_status": "VERIFIED",
+          "iteration": 2,
+          "peak_rss_mb_end": 0.0,
+          "peak_rss_mb_start": 0.0,
+          "plan_step_count": 1000,
+          "preflight_seconds": 0.23829919999843696,
+          "recovery_duration_seconds": 0.46133820000250125,
+          "recovery_execution_seconds": 0.3921537999995053,
+          "recovery_planning_seconds": 0.01254019999760203,
+          "rows_checked": 1050,
+          "rss_growth_mb": 0.0,
+          "seed": 20261122,
+          "simulation_seconds": 0.055741099997248966,
+          "snapshot_bytes": 507904,
+          "snapshot_seconds": 0.008814500004518777,
+          "transaction_history_seconds": 0.017618800004129298,
+          "unaccounted_seconds": 0.0038664999956381507
+        },
+        {
+          "apply_seconds": 0.08796409999922616,
+          "audit_status": "committed",
+          "checksum_verification_seconds": 0.026729599994723685,
+          "commit_seconds": 0.0051048000023001805,
+          "database_bytes": 1572864,
+          "dataset_rows": 1000,
+          "event_count": 1000,
+          "execute_plan_seconds": 0.42132349999883445,
+          "faulty_transaction_id": 2,
+          "integrity_status": "VERIFIED",
+          "iteration": 3,
+          "peak_rss_mb_end": 0.0,
+          "peak_rss_mb_start": 0.0,
+          "plan_step_count": 1000,
+          "preflight_seconds": 0.24225879999721656,
+          "recovery_duration_seconds": 0.46335540000291076,
+          "recovery_execution_seconds": 0.39459390000411076,
+          "recovery_planning_seconds": 0.01208730000507785,
+          "rows_checked": 1050,
+          "rss_growth_mb": 0.0,
+          "seed": 20261122,
+          "simulation_seconds": 0.056231900001876056,
+          "snapshot_bytes": 507904,
+          "snapshot_seconds": 0.008174499998858664,
+          "transaction_history_seconds": 0.017792200000258163,
+          "unaccounted_seconds": 0.003977899999881629
+        }
+      ],
+      "summary": {
+        "apply_seconds": {
+          "average": 0.089019,
+          "maximum": 0.090237,
+          "median": 0.088855,
+          "minimum": 0.087964,
+          "sample_count": 3
+        },
+        "checksum_verification_seconds": {
+          "average": 0.027422,
+          "maximum": 0.029192,
+          "median": 0.02673,
+          "minimum": 0.026344,
+          "sample_count": 3
+        },
+        "commit_seconds": {
+          "average": 0.005258,
+          "maximum": 0.005646,
+          "median": 0.005105,
+          "minimum": 0.005022,
+          "sample_count": 3
+        },
+        "execute_plan_seconds": {
+          "average": 0.426183,
+          "maximum": 0.438728,
+          "median": 0.421323,
+          "minimum": 0.418498,
+          "sample_count": 3
+        },
+        "peak_rss_mb_end": {
+          "average": 0.0,
+          "maximum": 0.0,
+          "median": 0.0,
+          "minimum": 0.0,
+          "sample_count": 3
+        },
+        "preflight_seconds": {
+          "average": 0.24521,
+          "maximum": 0.255071,
+          "median": 0.242259,
+          "minimum": 0.238299,
+          "sample_count": 3
+        },
+        "recovery_duration_seconds": {
+          "average": 0.469511,
+          "maximum": 0.48384,
+          "median": 0.463355,
+          "minimum": 0.461338,
+          "sample_count": 3
+        },
+        "recovery_execution_seconds": {
+          "average": 0.398761,
+          "maximum": 0.409536,
+          "median": 0.394594,
+          "minimum": 0.392154,
+          "sample_count": 3
+        },
+        "recovery_planning_seconds": {
+          "average": 0.013183,
+          "maximum": 0.014921,
+          "median": 0.01254,
+          "minimum": 0.012087,
+          "sample_count": 3
+        },
+        "rss_growth_mb": {
+          "average": 0.0,
+          "maximum": 0.0,
+          "median": 0.0,
+          "minimum": 0.0,
+          "sample_count": 3
+        },
+        "simulation_seconds": {
+          "average": 0.056183,
+          "maximum": 0.056575,
+          "median": 0.056232,
+          "minimum": 0.055741,
+          "sample_count": 3
+        },
+        "snapshot_seconds": {
+          "average": 0.008532,
+          "maximum": 0.008815,
+          "median": 0.008608,
+          "minimum": 0.008174,
+          "sample_count": 3
+        },
+        "transaction_history_seconds": {
+          "average": 0.01764,
+          "maximum": 0.017792,
+          "median": 0.017619,
+          "minimum": 0.017508,
+          "sample_count": 3
+        }
+      }
+    },
+    {
+      "dataset_rows": 10000,
+      "errors": [],
+      "runs": [
+        {
+          "apply_seconds": 1.0348349999985658,
+          "audit_status": "committed",
+          "checksum_verification_seconds": 0.2122596999979578,
+          "commit_seconds": 0.02205149999645073,
+          "database_bytes": 14692352,
+          "dataset_rows": 10000,
+          "event_count": 10000,
+          "execute_plan_seconds": 4.235126899999159,
+          "faulty_transaction_id": 2,
+          "integrity_status": "VERIFIED",
+          "iteration": 1,
+          "peak_rss_mb_end": 0.0,
+          "peak_rss_mb_start": 0.0,
+          "plan_step_count": 10000,
+          "preflight_seconds": 2.4248940000034054,
+          "recovery_duration_seconds": 4.597236400004476,
+          "recovery_execution_seconds": 4.022867200001201,
+          "recovery_planning_seconds": 0.13628109999990556,
+          "rows_checked": 10050,
+          "rss_growth_mb": 0.0,
+          "seed": 20261122,
+          "simulation_seconds": 0.5312334999980521,
+          "snapshot_bytes": 3952640,
+          "snapshot_seconds": 0.02086820000113221,
+          "transaction_history_seconds": 0.16366080000443617,
+          "unaccounted_seconds": 0.041299399999843445
+        },
+        {
+          "apply_seconds": 1.0933806000030017,
+          "audit_status": "committed",
+          "checksum_verification_seconds": 0.2174116000023787,
+          "commit_seconds": 0.015315899996494409,
+          "database_bytes": 14692352,
+          "dataset_rows": 10000,
+          "event_count": 10000,
+          "execute_plan_seconds": 4.331009400004405,
+          "faulty_transaction_id": 2,
+          "integrity_status": "VERIFIED",
+          "iteration": 2,
+          "peak_rss_mb_end": 0.0,
+          "peak_rss_mb_start": 0.0,
+          "plan_step_count": 10000,
+          "preflight_seconds": 2.4540991999965627,
+          "recovery_duration_seconds": 4.69244880000042,
+          "recovery_execution_seconds": 4.113597800002026,
+          "recovery_planning_seconds": 0.13365799999883166,
+          "rows_checked": 10050,
+          "rss_growth_mb": 0.0,
+          "seed": 20261122,
+          "simulation_seconds": 0.5394725000005565,
+          "snapshot_bytes": 3952640,
+          "snapshot_seconds": 0.021210400002019014,
+          "transaction_history_seconds": 0.16661900000326568,
+          "unaccounted_seconds": 0.039951999991899356
+        },
+        {
+          "apply_seconds": 1.0532972000000882,
+          "audit_status": "committed",
+          "checksum_verification_seconds": 0.21255229999951553,
+          "commit_seconds": 0.013833400000294205,
+          "database_bytes": 14692352,
+          "dataset_rows": 10000,
+          "event_count": 10000,
+          "execute_plan_seconds": 4.382237400001031,
+          "faulty_transaction_id": 2,
+          "integrity_status": "VERIFIED",
+          "iteration": 3,
+          "peak_rss_mb_end": 0.0,
+          "peak_rss_mb_start": 0.0,
+          "plan_step_count": 10000,
+          "preflight_seconds": 2.544420699996408,
+          "recovery_duration_seconds": 4.7443528000003425,
+          "recovery_execution_seconds": 4.169685100001516,
+          "recovery_planning_seconds": 0.13179130000207806,
+          "rows_checked": 10050,
+          "rss_growth_mb": 0.0,
+          "seed": 20261122,
+          "simulation_seconds": 0.5482209000037983,
+          "snapshot_bytes": 3952640,
+          "snapshot_seconds": 0.021497800000361167,
+          "transaction_history_seconds": 0.1698644000061904,
+          "unaccounted_seconds": 0.03896189999068156
+        }
+      ],
+      "summary": {
+        "apply_seconds": {
+          "average": 1.060504,
+          "maximum": 1.093381,
+          "median": 1.053297,
+          "minimum": 1.034835,
+          "sample_count": 3
+        },
+        "checksum_verification_seconds": {
+          "average": 0.214075,
+          "maximum": 0.217412,
+          "median": 0.212552,
+          "minimum": 0.21226,
+          "sample_count": 3
+        },
+        "commit_seconds": {
+          "average": 0.017067,
+          "maximum": 0.022051,
+          "median": 0.015316,
+          "minimum": 0.013833,
+          "sample_count": 3
+        },
+        "execute_plan_seconds": {
+          "average": 4.316125,
+          "maximum": 4.382237,
+          "median": 4.331009,
+          "minimum": 4.235127,
+          "sample_count": 3
+        },
+        "peak_rss_mb_end": {
+          "average": 0.0,
+          "maximum": 0.0,
+          "median": 0.0,
+          "minimum": 0.0,
+          "sample_count": 3
+        },
+        "preflight_seconds": {
+          "average": 2.474471,
+          "maximum": 2.544421,
+          "median": 2.454099,
+          "minimum": 2.424894,
+          "sample_count": 3
+        },
+        "recovery_duration_seconds": {
+          "average": 4.678013,
+          "maximum": 4.744353,
+          "median": 4.692449,
+          "minimum": 4.597236,
+          "sample_count": 3
+        },
+        "recovery_execution_seconds": {
+          "average": 4.10205,
+          "maximum": 4.169685,
+          "median": 4.113598,
+          "minimum": 4.022867,
+          "sample_count": 3
+        },
+        "recovery_planning_seconds": {
+          "average": 0.13391,
+          "maximum": 0.136281,
+          "median": 0.133658,
+          "minimum": 0.131791,
+          "sample_count": 3
+        },
+        "rss_growth_mb": {
+          "average": 0.0,
+          "maximum": 0.0,
+          "median": 0.0,
+          "minimum": 0.0,
+          "sample_count": 3
+        },
+        "simulation_seconds": {
+          "average": 0.539642,
+          "maximum": 0.548221,
+          "median": 0.539473,
+          "minimum": 0.531233,
+          "sample_count": 3
+        },
+        "snapshot_seconds": {
+          "average": 0.021192,
+          "maximum": 0.021498,
+          "median": 0.02121,
+          "minimum": 0.020868,
+          "sample_count": 3
+        },
+        "transaction_history_seconds": {
+          "average": 0.166715,
+          "maximum": 0.169864,
+          "median": 0.166619,
+          "minimum": 0.163661,
+          "sample_count": 3
+        }
+      }
+    }
+  ],
+  "environment": {
+    "captured_at_utc": "2026-11-22T17:41:49+00:00",
+    "cpu_brand": "AMD64 Family 25 Model 80 Stepping 0, AuthenticAMD",
+    "git_commit": "bff18b1",
+    "logical_cpus": 12,
+    "machine": "AMD64",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "python_compiler": "MSC v.1942 64 bit (AMD64)",
+    "python_implementation": "CPython",
+    "python_version": "3.13.1",
+    "resource_module_available": false,
+    "sqlite_version": "3.45.3",
+    "system": "Windows",
+    "third_party_dependencies": {},
+    "total_memory_gb": null
+  },
+  "metadata": {
+    "benchmark_mode": "full",
+    "command": "'C:\\Users\\msaad\\AppData\\Local\\Programs\\Python\\Python313\\python.exe' benchmarks/benchmark_recovery.py --datasets 1000 10000 --iterations 3 --output test-reports/phase5-benchmark-full.json",
+    "dataset_shape": "N inventory rows plus 10 customers, 20 orders, and 20 order items",
+    "datasets_requested": [
+      1000,
+      10000
+    ],
+    "documented_command": "'C:\\Users\\msaad\\AppData\\Local\\Programs\\Python\\Python313\\python.exe' benchmarks/benchmark_recovery.py --datasets 1000 10000 --iterations 3 --seed 20261122 --output 'C:\\Users\\msaad\\AppData\\Local\\Temp\\opencode\\Time-Travel_db_and_bug_rewinder\\test-reports\\phase5-benchmark-full.json'",
+    "faulty_operation": "UPDATE inventory SET stock = 0",
+    "generated_at_utc": "2026-11-22T17:41:49+00:00",
+    "iterations_requested": 3,
+    "memory_source": "resource.getrusage process high-water mark (unavailable on Windows)",
+    "notes": [
+      "Every timing comes from an actual recovery execution; no estimates or delays are used.",
+      "Peak RSS is a process-wide high-water mark and does not decrease between iterations.",
+      "Recovery execution excludes live checksum verification but includes preflight, simulation, apply, and commit.",
+      "Total recovery duration is elapsed monotonic time from snapshot creation through execute_plan.",
+      "Summaries include sample_count; failed iterations are preserved in dataset errors."
+    ],
+    "raw_results_preserved": true,
+    "seed": 20261122,
+    "timing_source": "time.perf_counter"
+  }
+}

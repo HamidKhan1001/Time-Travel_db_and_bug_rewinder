@@ -2,6 +2,8 @@
 
 Phase 5 adds a second, independent recovery demonstration that does **not** reuse the inventory-stock bug. It uses a faulty unscoped `UPDATE` on `orders.status` in an isolated SQLite database.
 
+This scenario uses the documented **direct recovery-engine workflow**: the scripts call the shared planner, integrity checks, and executor directly. It does **not** use the agent, HTTP API, UI, or human-in-the-loop approval gate. The inventory scenario remains the HITL demonstration.
+
 ## Goal
 
 Show that the same durable transaction history, planner, integrity checks, and recovery engine can recover a different kind of accidental multi-row write while preserving a legitimate transaction that happened after the fault.
@@ -17,7 +19,7 @@ The inventory scenario remains available in `tests/e2e.py`. This scenario uses a
 | `tests/test_second_crash_scenario.py` | Automated tests for the second scenario and for the original inventory scenario. |
 | `SECOND_CRASH_SCENARIO.md` | This document. |
 
-No application module, API route, UI file, seed fixture, or existing recovery tool signature was changed.
+At implementation time, no application module, API route, UI file, seed fixture, or existing recovery tool signature was changed. Current status and preserved evidence are described in [`DATABASE_LIMITATIONS.md`](DATABASE_LIMITATIONS.md) and [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md).
 
 ## Run it
 
@@ -117,7 +119,7 @@ Last verified from the repository root:
 
 - `test_orders_status_crash_scenario`: PASS.
 - `test_inventory_crash_scenario_still_works`: PASS.
-- Full unit suite: 86 tests pass.
+- Historical Phase 9 snapshot: 86 tests pass; the current suite count is recorded in [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md).
 - Manual two-script run: `status: PASS`, `faulty_rowcount: 4`, `affected_count: 4`, `affected_tables: ["orders"]`, legitimate order preserved, foreign keys valid, checksum `integrity_status: VERIFIED`.
 
 The existing inventory e2e demo was also re-run in an isolated copy and passed.
@@ -128,4 +130,4 @@ The existing inventory e2e demo was also re-run in an isolated copy and passed.
 - If a legitimate later transaction edits the same rows that the faulty transaction touched, the existing conflict detector will reject the scoped recovery rather than guess intent.
 - The scenario is intentionally isolated and deterministic; it does not change the running demo database or app code.
 
-Phases 5–7 are complete, including measured recovery performance benchmarking. Await approval before Phase 8.
+Historical note: this document was completed during the recovery-engine phase. Later phase status and current repository evidence are documented in [`README.md`](README.md), [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md), and [`PRODUCTION_RECOVERY_ARCHITECTURE.md`](PRODUCTION_RECOVERY_ARCHITECTURE.md).

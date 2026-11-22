@@ -1,4 +1,6 @@
 # Devlog — Time-Travel DB & Bug Rewinder
+> Historical planning and phase notes. Several entries describe earlier project states and are superseded by [`README.md`](../README.md), [`API.md`](../API.md), [`PERFORMANCE.md`](PERFORMANCE.md), [`AUDIT.md`](AUDIT.md), and [`DATABASE_LIMITATIONS.md`](../DATABASE_LIMITATIONS.md). Do not read the gap lists below as current status.
+>
 > Last updated: 2026-11-22 · Submission deadline: 2026-12-12
 
 ---
@@ -78,7 +80,7 @@ data/
 | SQL guard | `guard.py` | ✅ Blocks DROP/TRUNCATE/ALTER/unscoped UPDATE/DELETE. Deterministic — LLM cannot override |
 | Orchestrator + HITL gate | `agent.py` | ✅ Phases: parsing → branching → extracting_delta → planning → diagnosing → awaiting_approval → applying → applied/undone |
 | Approve + Undo | `agent.py:173`, `200` | ✅ Both wired end-to-end |
-| Session streaming (polling) | `server.py:97`, `index.html:127` | ⚠️ Polls every 500ms — not true SSE yet |
+| Session streaming (polling) | `server.py`, `index.html` | Historical: polling at this point; SSE was added later at `/api/session/<id>/events` |
 | `TT_PACE` env var | `agent.py:10` | ✅ Controls animation speed (default 0.4s per step) |
 | Web UI | `web/index.html` | ✅ Timeline, feed, merge table, diff viewer, approve/undo |
 | E2E test | `tests/e2e.py` | ✅ Passes. Covers full flow including undo |
@@ -104,6 +106,9 @@ data/
 | `STAGE VISIBILITY` | No projector mode (large fonts, high contrast, `?projector` param) | Small |
 
 ### Team 2 — Backend
+
+> Historical planning snapshot: the gaps in this section describe the state when the devlog was written. `SPEED PROOF`, `SCALE PROOF`, and `INTEGRITY` were addressed in later phases; current evidence is in [`PERFORMANCE.md`](PERFORMANCE.md) and [`AUDIT.md`](AUDIT.md).
+
 | Item | Gap | Effort |
 |------|-----|--------|
 | `REAL-TIME` | No SSE endpoint. Add `GET /api/session/<id>/stream` → `text/event-stream` | Medium |

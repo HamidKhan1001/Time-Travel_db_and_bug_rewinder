@@ -82,6 +82,7 @@ def iter_sse_frames(
     heartbeat_seconds: float = HEARTBEAT_SECONDS,
     poll_seconds: float = POLL_SECONDS,
     max_seconds: float = MAX_STREAM_SECONDS,
+    closed=None,
 ) -> Iterable[str]:
     """Yield replayed and live audit frames without holding database transactions."""
     cursor = after_id
@@ -91,12 +92,16 @@ def iter_sse_frames(
         yield format_stream_error()
         return
     for record in replay_records:
+        if closed is not None and closed():
+            return
         cursor = max(cursor, int(record["id"]))
         yield audit_event_to_sse(record)[2]
 
     start = time.monotonic()
     heartbeat_at = start + heartbeat_seconds
     while time.monotonic() - start < max_seconds:
+        if closed is not None and closed():
+            return
         time.sleep(poll_seconds)
         try:
             records = read_events_after(session_id, cursor)

@@ -1,6 +1,8 @@
 """Apex Gear + Time-Travel Mission Control. Run: python3 server.py  ->  http://localhost:8000"""
 import json
 import os
+import select
+import socket
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -11,6 +13,7 @@ from timetravel import agent, appcode, db, seed, sse, tools
 WEB = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web")
 WARM = {"ms": None, "at": None}
 SHOW = ["APX-0007", "APX-0042", "APX-0100", "APX-0555", "APX-0777"]
+JS_FILES = {"recovery_data.js", "recovery_view.js"}
 
 
 def warm_loop():
@@ -87,6 +90,15 @@ class H(BaseHTTPRequestHandler):
     def log_message(self, *a):
         pass
 
+    def _client_closed(self):
+        try:
+            readable, _, _ = select.select([self.connection], [], [], 0)
+            if not readable:
+                return False
+            return self.connection.recv(1, socket.MSG_PEEK) == b""
+        except (OSError, ValueError):
+            return True
+
     def _send(self, code, body, ctype="application/json"):
         data = body if isinstance(body, bytes) else json.dumps(body).encode()
         self.send_response(code)
@@ -103,6 +115,13 @@ class H(BaseHTTPRequestHandler):
                 return self._send(200, api_state())
 
             parsed = urlsplit(self.path)
+            if parsed.path.startswith("/js/"):
+                name = parsed.path[4:]
+                if name not in JS_FILES:
+                    return self._send(404, {"error": "not found"})
+                with open(os.path.join(WEB, "js", name), "rb") as handle:
+                    return self._send(200, handle.read(), "application/javascript; charset=utf-8")
+
             if parsed.path.startswith("/api/session/") and parsed.path.endswith("/events"):
                 parts = parsed.path.strip("/").split("/")
                 sid = parts[2] if len(parts) > 2 else ""
@@ -130,7 +149,7 @@ class H(BaseHTTPRequestHandler):
                 try:
                     self.wfile.write(b"retry: 3000\n\n")
                     self.wfile.flush()
-                    for frame in sse.iter_sse_frames(sid, after_id):
+                    for frame in sse.iter_sse_frames(sid, after_id, closed=self._client_closed):
                         self.wfile.write(frame.encode("utf-8"))
                         self.wfile.flush()
                 except (BrokenPipeError, ConnectionResetError, OSError):

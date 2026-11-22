@@ -1,12 +1,16 @@
+import json
 import os
 import sys
 import tempfile
+import threading
 import unittest
+import urllib.error
+import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import server
-from timetravel import appcode, db
+from timetravel import agent, appcode, db
 
 
 class ApiContractTests(unittest.TestCase):
@@ -25,6 +29,7 @@ class ApiContractTests(unittest.TestCase):
         appcode.reload()
 
     def tearDown(self):
+        agent.SESSIONS.clear()
         db.connect = self.original_connect
         db.LIVE = self.original_live
         db.clock.offset = 0
@@ -67,6 +72,47 @@ class ApiContractTests(unittest.TestCase):
         self.assertIn("units", state["inventory"])
         self.assertIn("zero", state["inventory"])
         self.assertIn("sample", state["inventory"])
+
+    def test_js_assets_are_served_from_an_allowlist(self):
+        httpd = server.ThreadingHTTPServer(("127.0.0.1", 0), server.H)
+        thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+        thread.start()
+        port = httpd.server_address[1]
+        try:
+            response = urllib.request.urlopen(
+                f"http://127.0.0.1:{port}/js/recovery_data.js", timeout=2)
+            self.assertEqual(response.status, 200)
+            self.assertTrue(response.headers["Content-Type"].startswith("application/javascript"))
+            self.assertIn("RecoveryData", response.read().decode("utf-8"))
+            response.close()
+            with self.assertRaises(urllib.error.HTTPError) as raised:
+                urllib.request.urlopen(f"http://127.0.0.1:{port}/js/%2e%2e/server.py", timeout=2)
+            self.assertEqual(raised.exception.code, 404)
+        finally:
+            httpd.shutdown()
+            httpd.server_close()
+            thread.join(timeout=2)
+
+
+    def test_session_endpoint_exposes_timing_contract(self):
+        session = agent.Session("api timing contract")
+        agent.SESSIONS[session.id] = session
+        httpd = server.ThreadingHTTPServer(("127.0.0.1", 0), server.H)
+        thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+        thread.start()
+        port = httpd.server_address[1]
+        try:
+            response = urllib.request.urlopen(
+                f"http://127.0.0.1:{port}/api/session/{session.id}", timeout=2)
+            payload = json.loads(response.read().decode("utf-8"))
+            response.close()
+        finally:
+            httpd.shutdown()
+            httpd.server_close()
+            thread.join(timeout=2)
+        self.assertIn("timings", payload)
+        for value in payload["timings"].values():
+            self.assertIsNone(value)
 
 
 if __name__ == "__main__":

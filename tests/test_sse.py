@@ -190,6 +190,21 @@ class SSETests(unittest.TestCase):
         self.assertIn("sseSeen", html)
         self.assertIn("source.close()", html)
 
+    def test_stream_stops_when_client_close_callback_reports_closed(self):
+        record = {"id": 21, "session_id": "INC-A1B2C3", "event_type": "recovery_completed",
+                  "status": "completed", "ts": 1.0, "detail": {}}
+        checks = []
+
+        def closed():
+            checks.append(True)
+            return len(checks) >= 2
+
+        with mock.patch.object(sse, "read_events_after", return_value=[record]):
+            frames = list(sse.iter_sse_frames(
+                "INC-A1B2C3", 0, poll_seconds=0, max_seconds=10, closed=closed))
+        self.assertEqual(len(frames), 1)
+        self.assertIn("id: 21", frames[0])
+
     def test_stream_bounds_and_heartbeat_constants(self):
         self.assertEqual(sse.HEARTBEAT_SECONDS, 15.0)
         self.assertEqual(sse.MAX_STREAM_SECONDS, 300.0)
