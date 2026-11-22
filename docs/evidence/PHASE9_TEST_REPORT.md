@@ -26,7 +26,7 @@ python3 -m unittest discover -s tests -p 'test_*.py' -v
 | Execution duration | 16.069 s (runner), 15.424 s (unittest) |
 | Status | OK |
 
-JSON artifact: `test-reports/phase9_test_report.json`.
+JSON artifact: `docs/evidence/phase9_test_report.json`.
 
 ## Required category coverage
 
@@ -64,5 +64,5 @@ JSON artifact: `test-reports/phase9_test_report.json`.
 ## Files added for Phase 9
 
 - `tests/test_phase9_comprehensive.py`
-- `test-reports/phase9_test_report.json`
-- `test-reports/PHASE9_TEST_REPORT.md`
+- `docs/evidence/phase9_test_report.json`
+- `docs/evidence/PHASE9_TEST_REPORT.md`
