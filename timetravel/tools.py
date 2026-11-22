@@ -326,4 +326,5 @@ def undo_recovery(live, backup_db, backup_src):
     snap = db.connect(backup_db)
     snap.backup(live)
     snap.close()
-    appcode.write_source(open(backup_src).read())
+    with open(backup_src, "r", encoding="utf-8") as handle:
+        appcode.write_source(handle.read())
