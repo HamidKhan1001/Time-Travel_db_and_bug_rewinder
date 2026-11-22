@@ -218,12 +218,19 @@ def main() -> None:
     print(f"  Model    : {model_name}")
     print("=" * 60)
 
-    results = {
-        "Provider configured": test_provider_configured(),
-        "parse_intent (LLM)": test_parse_intent() if llm.is_available() else None,
-        "propose_patch (LLM)": test_propose_patch() if llm.is_available() else None,
-        "explain_conflicts (LLM)": test_explain_conflicts() if llm.is_available() else None,
-    }
+    results = {}
+    results["Provider configured"] = test_provider_configured()
+    if llm.is_available():
+        time.sleep(1.5)
+        results["parse_intent (LLM)"] = test_parse_intent()
+        time.sleep(1.5)
+        results["propose_patch (LLM)"] = test_propose_patch()
+        time.sleep(1.5)
+        results["explain_conflicts (LLM)"] = test_explain_conflicts()
+    else:
+        results["parse_intent (LLM)"] = None
+        results["propose_patch (LLM)"] = None
+        results["explain_conflicts (LLM)"] = None
 
     _header("Summary")
     total = passed = skipped = failed = 0
