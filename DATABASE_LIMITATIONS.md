@@ -32,10 +32,10 @@ This document describes the supported scope, known limitations, and remaining is
 
 ## Remaining issues / operational notes
 
-- **100K+ benchmark evidence**: benchmark scripts are implemented; a 100K single-iteration run was attempted during Phase 10 but did not complete within the available execution window in this session. No 100K result is fabricated. Run the command below on a stable machine and commit the generated JSON/report.
-- **Full 1k/10k/100k/500k x3 matrix**: not completed in this workspace session; report only actual measured results.
+- **100K+ benchmark evidence**: a 100K single-iteration run did not complete in one earlier Windows workspace session. Historical macOS 100K/500K matrix evidence is preserved in `BENCHMARK_REPORT.md` and `benchmarks/benchmark_results.json`; current Windows evidence is limited to `docs/PERFORMANCE.md`. Do not mix results across environments.
+- **Benchmark scope**: all preserved results are local SQLite measurements from specific machines and commits. They are not an SLA, production guarantee, or hardware-comparable benchmark.
 - **PostgreSQL WAL/AWS RDS PITR**: documented as proposed architecture only; no native implementation claimed.
-- **Legacy demo coupling**: `server.py`/`agent.py`/`tools.py` still contain the original demo recovery flow; `timetravel/recovery` is additive and can be used directly by scripts/tests.
+- **Workflow separation**: `server.py`/`agent.py`/`tools.py` contain the HITL demo recovery flow. `timetravel/recovery` is additive and is used directly by the second crash scripts and benchmarks. The second crash scenario does not use agent approval.
 
 ## Safety guarantees in supported scope
 

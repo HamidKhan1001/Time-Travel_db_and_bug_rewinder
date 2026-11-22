@@ -5,7 +5,7 @@ Uses the existing project workflow:
 - seed/reset initializes deterministic data
 - agent.start() parses intent, detects incident, builds branch/plan/patch
 - human approval gate via agent.approve() (explicit confirmation prompt)
-- checksum/integrity checks run inside recovery engine and smoke checks
+- smoke checks run inside the HTTP apply path, followed by separate business-table checksum verification in this script
 
 Run: python3 final_recovery_demo.py
 Optional: python3 final_recovery_demo.py --yes  # explicit non-interactive approval for automation

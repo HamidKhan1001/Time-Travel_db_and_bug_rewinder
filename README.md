@@ -1,71 +1,156 @@
 # Time-Travel DB & Bug Rewinder
 
-Zero dependencies (Python 3.9+ stdlib + SQLite). `python3 server.py` -> http://localhost:8000
+A local SQLite demonstration of recovering a corrupted database without losing legitimate writes made after the crash.
 
-## Demo (3 min)
-1. `python3 reset.py` (also the "Reset demo" button) - clean seeded state, buggy code restored.
-2. Show healthy storefront. Click **① Trigger warehouse sync** -> inventory wiped to 0.
-3. **② Place 3 orders** -> #1041-#1043 (one oversells a limited item: the "drama" conflict).
-4. **③ Run Time-Travel** with the pre-filled prompt (slider changes "N minutes ago").
-5. Walk through the proposed recovery projection, merge table, conflict, risk score, and patch diff. **④ Approve & Go Live**.
-6. After approval, inspect actual sampled values, verification status, and undo availability. **⑤ Re-run the crash action** -> touches 1 row. Optional: **Undo** to rewind the rewind.
+The demo intentionally runs `UPDATE inventory SET stock = ?` without a `WHERE` clause, wiping stock for all 1,420 SKUs. Orders placed during the outage are preserved. The agent rewinds a clone, extracts post-crash writes, plans a merge, asks a human to approve, applies the recovery, verifies the result, and can undo the rewind.
 
-Keep the crash within ~2 min of running step 4 or the guardrail snaps the rewind point to just before the crash (also a nice moment to show).
+This is a prototype. It is SQLite-only and does not implement PostgreSQL WAL decoding, AWS RDS PITR, distributed recovery, authentication/RBAC, or production-grade deployment.
 
-## How it works
-- `db.py` row-level change log via triggers (our WAL/CDC stream) -> point-in-time rewind by reversing changes on a clone.
-- `tools.py` the five tools: rewind_branch, extract_delta, plan_merge (3-way merge + FK/idempotency/oversell resolver + dry run), diagnose_and_patch (verified on a clone), apply_recovery (atomic, smoke-checked, undoable).
-- `guard.py` deterministic SQL policy: DROP/TRUNCATE/ALTER and unscoped UPDATE/DELETE blocked without approval.
-- `agent.py` orchestrator + HITL gate. `TT_PACE=0` removes the small pacing delay.
-- `recovery_projection.py` builds a bounded, read-only proposed state/diff projection from the approved merge plan and live database state.
-- `web/js/recovery_data.js` and `web/js/recovery_view.js` render the projection, lifecycle, verification, and undo panels with safe DOM APIs.
-- `python3 tests/e2e.py` runs the full flow headless.
+## Quick start
+
+Requirements:
+
+- Python 3.9+ with SQLite JSON functions enabled (`json_object()`; SQLite 3.38+ is typical).
+- No third-party packages are required for the core demo or tests.
+- Optional Node.js is used only for the JavaScript UI unit tests.
+- Optional Gemini/Bedrock LLM providers require separate packages and credentials; see [`docs/ai-setup.md`](docs/ai-setup.md).
+
+```bash
+python3 server.py
+# open http://localhost:8000
+```
+
+Set `PORT` to change the local port. The server binds to `127.0.0.1` only.
+
+For a clean seeded state:
+
+```bash
+python3 reset.py
+```
+
+`reset.py` deletes generated demo databases in `data/`, restores the intentionally buggy handler, and recreates the schema. Do not run it against data you want to keep.
+
+## Architecture and workflow
+
+- `timetravel/db.py` installs row-level `changelog` triggers on the four registered business tables: `customers`, `inventory`, `orders`, and `order_items`. This is logical trigger capture, not SQLite WAL journaling.
+- `timetravel/tools.py` implements rewind-on-clone, delta extraction, three-way merge planning, patch diagnosis, and atomic apply with snapshots and smoke checks.
+- `timetravel/agent.py` orchestrates the session, enforces the human-in-the-loop approval gate, and exposes undo.
+- `timetravel/guard.py` deterministically blocks dangerous SQL such as `DROP`, `TRUNCATE`, `ALTER`, and unscoped `UPDATE`/`DELETE` unless explicitly approved.
+- `timetravel/recovery/` adds durable transaction history, deterministic recovery plans, FK-aware execution, conflict checks, and SHA-256 checksum verification over configured business-table rows.
+- `web/index.html`, `web/js/recovery_data.js`, and `web/js/recovery_view.js` render the dashboard, proposed recovery projection, actual post-apply values, lifecycle status, verification state, and undo state.
+
+Recovery sequence:
+
+1. Detect the unscoped write from the query log.
+2. Clone the live database and reverse changes to just before the crash.
+3. Extract and merge legitimate post-crash orders.
+4. Build a read-only recovery preview showing proposed values and risk.
+5. Pause for human approval via `POST /api/session/<id>/approve`.
+6. Apply atomically to the live database, optionally patch the handler source, and run smoke checks.
+7. Show actual sampled values separately from proposed values.
+8. Allow `POST /api/session/<id>/undo` to restore the pre-recovery database snapshot and source backup.
+
+Proposed rows are labeled `PROPOSED — NOT APPLIED`. Actual values appear only after commit. HTTP checksum verification is unavailable; the HTTP path records smoke checks only. Durable session audit events are written to `session_audit_events` and streamed over SSE.
+
+## Demonstration scenarios
+
+### Scenario A — inventory stock wipe (agent HITL workflow)
+
+Run from the dashboard:
+
+1. Click **Reset demo**.
+2. Click **Trigger warehouse sync** to wipe inventory.
+3. Click **Place 3 orders**.
+4. Run the prefilled time-travel prompt.
+5. Review the projection, conflict, risk score, and patch diff.
+6. Approve and inspect actual restored values, verification, audit history, and undo state.
+7. Re-run the crash to show the patched handler touches one row, then optionally undo.
+
+Headless equivalent in an isolated temporary copy:
+
+```bash
+TT_PACE=0 python3 tests/e2e_isolated.py
+```
+
+Do not run `tests/e2e.py` directly from the repository root when you need to preserve `data/` or `app/handlers.py`; it resets and patches repository state.
+
+### Scenario B — orders status wipe (direct recovery-engine workflow)
+
+This scenario is intentionally separate from the agent HITL flow. It uses the shared transaction logger, planner, integrity checks, and recovery engine directly. It does not call the HTTP approval gate.
+
+```bash
+tmpdir=$(mktemp -d)
+python3 tests/setup_second_crash.py --dir "$tmpdir"
+python3 tests/run_second_crash.py --dir "$tmpdir"
+```
+
+It changes four seeded orders with `UPDATE orders SET status = 'cancelled'`, inserts legitimate order `2005` afterward, reverses only the faulty transaction, and writes `second_crash_report.json`. See [`SECOND_CRASH_SCENARIO.md`](SECOND_CRASH_SCENARIO.md).
 
 ## Testing and CI
 
-Core tests use only the Python standard library. Optional AI providers are not required for the test suite.
+Core tests use only the Python standard library. Optional AI providers are not required for the test suite. Output paths below are local and do not overwrite preserved historical reports.
 
 ```bash
 # Complete unittest discovery
-TT_PACE=0 python tests/run_ci_suite.py --output test-reports/phase1-local.json
+TT_PACE=0 python3 tests/run_ci_suite.py --output test-reports/local-ci.json
 
 # Guard unit and deterministic fuzz tests
-python -m unittest tests.test_guard tests.test_guard_fuzz -v
+python3 -m unittest tests.test_guard tests.test_guard_fuzz -v
 
-# Recovery and second-crash suites
-python -m unittest tests.test_foreign_key_recovery tests.test_phase9_comprehensive tests.test_second_crash_scenario -v
+# Recovery engine, integrity, audit, API, SSE, projection, and timing tests
+python3 -m unittest discover -s tests -p "test_*.py"
 
-# Phase 4 projection and dashboard tests (Node test is skipped when Node.js is unavailable)
-python -m unittest tests.test_recovery_projection tests.test_recovery_ui -v
+# Projection and JavaScript UI tests
+python3 -m unittest tests.test_recovery_projection tests.test_recovery_ui -v
 node --test tests/js/recovery_ui.test.js
 
-# Headless demo in an isolated temporary copy
-TT_PACE=0 python tests/e2e_isolated.py
+# Isolated headless demo
+TT_PACE=0 python3 tests/e2e_isolated.py
 
 # Lightweight benchmark smoke
-python benchmarks/benchmark_recovery.py --datasets 1000 --iterations 1 --output test-reports/phase5-benchmark-smoke.json
+python3 benchmarks/benchmark_recovery.py --datasets 1000 --iterations 1 --output test-reports/local-benchmark-smoke.json
 
 # Reproducible multi-repetition benchmark with medians
-python benchmarks/benchmark_recovery.py --datasets 1000 10000 --iterations 3 --output test-reports/phase5-benchmark-full.json
+python3 benchmarks/benchmark_recovery.py --datasets 1000 10000 --iterations 3 --output test-reports/local-benchmark-full.json
 ```
 
-The isolation runner copies `app`, `seed`, `timetravel`, `tests`, and `data` into a temporary directory before executing the E2E demo. It does not reset or modify `data/live.db` in the repository.
+The fuzz suite uses a fixed seed (`20261122`) and never executes generated SQL. GitHub Actions runs the suite on Python 3.11 and 3.12, then explicit guard tests, isolated E2E, and a 1K-row benchmark smoke. See [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
 
-The dashboard projection is a bounded sample of the full plan; aggregate counts cover every planned row. It never invents post-apply values: proposed rows are labeled `PROPOSED — NOT APPLIED`, actual values appear only after commit, and checksum verification is shown as unavailable because the HTTP path records smoke checks only. Lifecycle events use SSE stable IDs with audit polling fallback; the client deduplicates by ID and does not display invented progress percentages.
+Python compilation check:
 
-The fuzz suite uses a fixed seed (`20261122`) and does not execute generated SQL. A failing fuzz case reports the generated input and guard result; rerun it through `tests.test_guard_fuzz` for a reproducible failure.
+```bash
+python3 -m compileall -q benchmarks tests timetravel server.py final_recovery_demo.py reset.py
+```
 
-GitHub Actions runs the same complete suite on Python 3.11 and 3.12, followed by explicit guard testing, isolated E2E, and a 1K-row benchmark smoke. Historical test and benchmark reports include the commit/date context where applicable and must not be rewritten to imply newer verification.
+## Performance and integrity evidence
+
+Local SQLite benchmark evidence is recorded in [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md) and [`BENCHMARK_REPORT.md`](BENCHMARK_REPORT.md). These are local measurements from specific machines and commits; they are not an SLA or a production guarantee.
+
+Important scopes:
+
+- `integrity_status: VERIFIED` means checksum verification matched for the configured `db.TABLES` business rows, not the entire database file, schema, audit tables, or metadata.
+- HTTP/UI verification is limited to post-apply smoke checks; checksum status is reported as unavailable there.
+- Windows RSS values of `0.0` mean unavailable measurement, not zero memory use.
+- Timing values are monotonic diagnostics for one process and are not restored after restart.
 
 ## Documentation
 
-- Complete HTTP API and SSE stream: [`API.md`](API.md)
-- Recovery and audit persistence lifecycle: [`docs/AUDIT.md`](docs/AUDIT.md)
-- Performance evidence and integrity scope: [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md)
-- Database limitations: [`DATABASE_LIMITATIONS.md`](DATABASE_LIMITATIONS.md)
-- AI provider setup: [`docs/ai-setup.md`](docs/ai-setup.md)
+- [HTTP API, SSE events, and session fields](API.md)
+- [Audit persistence and recovery lifecycle](docs/AUDIT.md)
+- [Performance and checksum scope](docs/PERFORMANCE.md)
+- [Database recovery engine scope](DATABASE_ENGINE_README.md)
+- [Database limitations](DATABASE_LIMITATIONS.md)
+- [Second crash scenario](SECOND_CRASH_SCENARIO.md)
+- [Production recovery architecture (prototype plus proposed design)](PRODUCTION_RECOVERY_ARCHITECTURE.md)
+- [AI provider setup](docs/ai-setup.md)
+- [Devlog (historical planning notes)](docs/devlog.md)
 
-The core demo is SQLite-only. Optional Gemini and AWS Bedrock providers use structured fallback behavior; PostgreSQL WAL, RDS PITR, RBAC, SSE, and distributed production promotion are not implemented.
+## Known limitations
 
-## Not in here yet
-Intent parsing is regex, not an LLM; AWS (Bedrock/Strands/RDS PITR) is not wired. The tools are plain functions so wrapping them with Strands `@tool` is straightforward.
+- SQLite-only prototype; no PostgreSQL WAL decoding, AWS RDS PITR integration, or distributed recovery executor.
+- Capture is limited to registered business tables and DML operations; DDL, unmanaged tables, metadata tables, and out-of-band writes are unsupported.
+- No authentication or RBAC; the demo server is local-only.
+- In-memory sessions are lost on process restart; SQLite audit records remain.
+- Database recovery and source-code patching are separate operations, not a distributed atomic commit.
+- The second crash scenario exercises the recovery engine directly and does not verify the HITL approval gate.
+- SSE is local SQLite polling with stable audit IDs and at-least-once delivery, not an external pub/sub system.

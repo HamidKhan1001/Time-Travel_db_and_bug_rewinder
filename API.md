@@ -4,10 +4,12 @@ The demo server is a Python `ThreadingHTTPServer` listening on `127.0.0.1:8000` 
 
 ## General behavior
 
-- Success for POST routes is currently HTTP `200` with a route-specific JSON body.
-- Unknown routes return `404 {"error":"unknown route <path>"}`.
-- Request/handler errors return `400 {"error":"<message>"}`.
-- Unknown session GET requests return `404 {"error":"session not found"}`.
+- Successful POST routes return HTTP `200` with a route-specific JSON body.
+- Unknown POST routes return `404 {"error":"unknown route <path>"}`.
+- POST request/handler errors return `400 {"error":"<message>"}`.
+- Unknown GET paths return `404 {"error":"not found"}`.
+- Unknown session GET requests return `404 {"error":"session not found"}`; unknown audit history returns `404 {"error":"audit history not found"}`; unknown or historical-empty SSE sessions return `404 {"error":"session or audit history not found"}`.
+- Unexpected GET handler errors return `500 {"error":"<message>"}`.
 - No authentication or external authorization mechanism is implemented.
 - Approval is enforced only by the in-memory session phase; `/api/session/<id>/approve` must target a session in `awaiting_approval`.
 

@@ -34,10 +34,11 @@ Dataset generator: `benchmarks/generate_data.py`
 - `recovery_duration_seconds` is wall-clock time from snapshot creation through `execute_plan()`.
 - Memory is `resource.getrusage` process high-water RSS; it is cumulative within the process and is not a per-iteration delta.
 - Every iteration was committed and reported `integrity_status: VERIFIED`; there were 0 errors.
+- `VERIFIED` here means row-level checksum verification over the configured `db.TABLES` business rows only. It does not cover the full database file, schema, audit/metadata tables, or an HTTP UI verification step.
 
 ## Pre-run optimization
 
-Before the final benchmark, `verification.compare_baselines()` was changed from cross-database SQL sample queries to a single streaming merge of the two sorted checksum tables. This removed a pathological scan path: an isolated 10,000-row verification profile dropped from roughly 78.4 seconds to 2.14 seconds. The final numbers below include this optimization.
+Before the final benchmark, `verification.compare_baselines()` was changed from cross-database SQL sample queries to a single streaming merge of the two sorted checksum tables. This removed a pathological scan path. The final numbers below include this optimization; no artifact for an earlier isolated profile is tracked here.
 
 ## Results
 
@@ -115,7 +116,7 @@ Using median total recovery duration:
 | 100,000 | 347.718108 s | 12.26× |
 | 500,000 | 652.286040 s | 1.88× |
 
-A 10× row increase from 1,000 to 10,000 raised median duration by about 13×. From 10,000 to 100,000 it again rose by about 12×. From 100,000 to 500,000 it rose by 1.88×, which is sublinear but still substantial in absolute terms: roughly 5 minutes 25 seconds longer.
+A 10× row increase from 1,000 to 10,000 raised median duration by about 13×. From 10,000 to 100,000 it again rose by about 12×. From 100,000 to 500,000 it rose by 1.88×, which is sublinear but still substantial in absolute terms: about 5 minutes 5 seconds longer.
 
 The 100,000-row dataset showed the largest variance, with planning averaging 41.589 seconds versus a 13.943-second median. Medians are therefore used for the headline comparison.
 

@@ -10,11 +10,11 @@ This document covers **Phase 8: Production Recovery Architecture** for the Time-
 | Deterministic recovery planning and analysis/execution separation | **Implemented** | `timetravel/recovery/recovery_planner.py`, `timetravel/recovery/recovery_engine.py` |
 | UPDATE/DELETE/INSERT compensation with conflict detection, FK-aware ordering, atomic rollback, audit records | **Implemented** | `timetravel/recovery/integrity.py`, `timetravel/recovery/dependencies.py`, `timetravel/recovery/recovery_engine.py` |
 | SHA-256 row/database checksum verification blocking success on mismatch | **Implemented** | `timetravel/recovery/verification.py`, integrated by `recovery_engine.execute_plan()` |
-| Unit/integration tests for recovery engine and two crash scenarios | **Tested in this workspace** | `python3 -m unittest discover -s tests -p 'test_*.py'` → 86 tests, OK; `python3 tests/e2e.py` passing in an isolated copy |
+| Unit/integration tests for recovery engine and two crash scenarios | **Tested** | `python3 -m unittest discover -s tests -p 'test_*.py'` and `python3 tests/e2e_isolated.py`; current counts are recorded in `docs/PERFORMANCE.md` and Phase 7 evidence |
 | Benchmark suite scripts | **Implemented** | `benchmarks/generate_data.py`, `benchmarks/benchmark_recovery.py` |
 | Full benchmark results/report for 1k/10k/100k/500k x 3 iterations | **Complete** | `benchmarks/benchmark_results.json` and `BENCHMARK_REPORT.md`; 12/12 runs committed and `VERIFIED`, 0 errors. |
 | PostgreSQL WAL parsing, logical decoding consumer, or PostgreSQL recovery executor | **Proposed only — not implemented** | No PostgreSQL binaries/drivers in environment (`psql/initdb/postgres` not found; `psycopg`/`psycopg2` not installed); no Postgres recovery code in repo. |
-| AWS RDS automated backup / PITR integration | **Proposed only — not implemented** | No AWS SDK, credentials workflow, RDS API calls, or restore automation in repo. |
+| AWS RDS automated backup / PITR integration | **Proposed only — not implemented** | No RDS API calls or restore automation in repo. Optional Bedrock LLM support uses `boto3`; it is not RDS/PITR integration. |
 | Isolated PostgreSQL proof of concept | **Not feasible in current environment** | Missing PostgreSQL server/tooling and Python Postgres driver; no PoC claimed. |
 
 **Rule:** this document does not claim native WAL parsing, AWS RDS integration, or production deployment has been implemented or tested unless explicitly listed above as implemented/tested.
@@ -53,7 +53,7 @@ flowchart LR
 - **Not PostgreSQL WAL**: current "history" is logical trigger capture, not physical/logical WAL decoding.
 - **Not production HA/DR**: no replication, no automated failover, no backup catalog, no PITR restore orchestration, no RBAC/audit pipeline beyond local tables.
 - **Cutover boundary**: DB recovery is atomic in SQLite transaction; application code patching in legacy demo flow is separate and not a distributed atomic commit.
-- **Operational scale**: benchmark suite exists, but full 500k x 3 measured report was not completed at Phase 8 documentation time.
+- **Operational scale**: benchmark suite exists. Historical 1k/10k/100k/500k × 3 evidence is in `BENCHMARK_REPORT.md`; current local evidence is in `docs/PERFORMANCE.md`. Neither is a production guarantee.
 
 ## Target production architecture (proposed)
 

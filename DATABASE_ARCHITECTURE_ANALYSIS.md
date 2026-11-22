@@ -1,7 +1,11 @@
 # Database Architecture Analysis — Task 3: Database Engine
 
-Status: **Phase 1 analysis complete; Phases 2–7 recovery engine implementation and performance benchmarking complete. Phase 8 awaits approval.**
-Repository inspected in full: 16 tracked files, one commit with substantive code (`5d1e083`), one initial commit (`b3c647f`).
+> **Historical snapshot.** This document describes the repository at an earlier commit and includes earlier file counts, environments, and planned work. Current implementation status is in [`README.md`](README.md), [`API.md`](API.md), [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md), [`DATABASE_ENGINE_README.md`](DATABASE_ENGINE_README.md), [`DATABASE_LIMITATIONS.md`](DATABASE_LIMITATIONS.md), and [`PRODUCTION_RECOVERY_ARCHITECTURE.md`](PRODUCTION_RECOVERY_ARCHITECTURE.md).
+>
+> Current corrections to this snapshot: the agent is LLM-first with deterministic fallback; requirements files and GitHub Actions CI exist; SSE is implemented; audit persistence exists; API contract documentation exists; recovery code lives in `timetravel/recovery/`.
+
+Historical status at inspection: **Phase 1 analysis complete; Phases 2–7 recovery engine implementation and performance benchmarking complete. Phase 8 awaits approval.**
+Historical repository inspected: 16 tracked files, one commit with substantive code (`5d1e083`), one initial commit (`b3c647f`).
 
 ---
 
@@ -528,7 +532,7 @@ Unsupported cases raise `UnsupportedRelationshipError` during planning or produc
 
 Every successful recovery asserts `PRAGMA foreign_key_check` and per-relationship orphan checks. No existing application module was modified for Phase 4.
 
-Verification: `python3 -m unittest discover -s tests -p 'test_*.py' -v` passes 86 tests; `python3 -m compileall -q timetravel tests` passes; the existing `python3 tests/e2e.py` regression passes in an isolated copy.
+Historical Phase 4 verification: `python3 -m unittest discover -s tests -p 'test_*.py' -v` passed 86 tests at that snapshot; `python3 -m compileall -q timetravel tests` passed; the existing `python3 tests/e2e.py` regression passed in an isolated copy. Current suite counts are recorded in [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md).
 
 ---
 
@@ -597,4 +601,4 @@ The dominant costs at 500,000 rows were live apply (204.667 s), preflight valida
 
 ### 15.3 Verification
 
-`python3 -m unittest discover -s tests -p 'test_*.py' -v` passes 86 tests and `python3 -m compileall -q timetravel tests benchmarks` passes after the Phase 7 changes. The benchmark runner was executed directly to produce the raw JSON results.
+Historical Phase 7 verification: `python3 -m unittest discover -s tests -p 'test_*.py' -v` passed 86 tests at that snapshot and `python3 -m compileall -q timetravel tests benchmarks` passed. The benchmark runner was executed directly to produce the raw JSON results. Current suite counts are recorded in [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md).

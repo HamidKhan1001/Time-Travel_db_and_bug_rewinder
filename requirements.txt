@@ -1,4 +1,5 @@
-# Core runtime — zero dependencies (Python 3.9+ stdlib + sqlite3)
-# AI features (optional — app falls back to deterministic regex without them)
+# Optional AI provider dependencies.
+# Core runtime is stdlib-only; install requirements-core.txt for the core demo.
+# The app falls back to deterministic parsing/patching without these packages.
 google-genai>=2.30.1
 boto3>=1.34.0
