@@ -3,11 +3,14 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Frontend for Time-Travel DB & Bug Rewinder (hackathon build). React + Vite + Tailwind, mock data until the backend is connected.",
+  "description": "Frontend for Time-Travel DB & Bug Rewinder (hackathon build). React + Vite + Tailwind, mock data by default, or the real Python backend with `npm run dev:live`.",
   "scripts": {
     "dev": "vite",
+    "dev:live": "vite --mode live",
     "build": "vite build",
-    "preview": "vite preview"
+    "build:live": "vite build --mode live",
+    "preview": "vite preview",
+    "test": "node --test src/services/adapters.test.js"
   },
   "dependencies": {
     "react": "^19.3.1",

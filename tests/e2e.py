@@ -28,6 +28,9 @@ assert c.execute("select count(*) from inventory where stock=0").fetchone()[0] <
 print("bug no longer wipes; zero rows:", c.execute("select count(*) from inventory where stock=0").fetchone()[0])
 agent.undo(s.id)
 c = db.connect()
+trail = [e["event_type"] for e in agent.audit_events(s.id)]
+assert "recovery_completed" in trail and trail.index("undo_initiated") < trail.index("undo_completed"), trail
+print("audit trail survived undo:", trail)
 assert appcode.fn("sync_stock")(c, {"sku": "APX-0007", "stock": 5})["updated_rows"] == 1420
 print("undo OK (buggy code back)")
 seed.reset(); print("E2E PASS")

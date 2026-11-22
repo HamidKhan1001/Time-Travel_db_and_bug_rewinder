@@ -13,7 +13,7 @@ export function OrderStatusPill({ order }) {
   if (order.status === 'partial') {
     return (
       <span className="px-2 py-0.5 rounded-full text-[10px] bg-amber-50 border border-amber-200 text-amber-800 font-bold tracking-wide shrink-0">
-        {order.fulfilledQty}/{order.qty} · {order.backorderedQty} backordered
+        {order.fulfilledQty != null ? `${order.fulfilledQty}/${order.qty} · ${order.backorderedQty} backordered` : 'Backordered'}
       </span>
     )
   }

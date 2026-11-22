@@ -84,7 +84,7 @@ class Session:
 def start(prompt, background=True):
     s = Session(prompt)
     SESSIONS[s.id] = s
-    _record_audit(s, "recovery_initiated", "started", {"prompt_length": len(prompt)})
+    _record_audit(s, "recovery_initiated", "started", {"prompt_length": len(prompt), "prompt": prompt[:500]})
     if background:
         threading.Thread(target=_run, args=(s,), daemon=True).start()
     else:
@@ -211,6 +211,8 @@ def _pipeline(s):
         "orders_preserved": summary.get("orders_preserved"),
         "conflict_count": len(summary.get("conflicts", [])),
         "risk_score": summary.get("risk", {}).get("score"),
+        "discarded_rows": summary.get("zero_before"),
+        "rewind_target_ts": target,
         "timings": s.timing_report(),
     })
     try:
@@ -284,6 +286,24 @@ def approve(sid):
     return s
 
 
+def discard(sid):
+    """Reject a plan that is waiting for approval. Production is never touched."""
+    s = SESSIONS[sid]
+    if s.phase != "awaiting_approval":
+        _record_audit(s, "approval_rejected", "rejected", {"current_phase": s.phase})
+        raise ValueError(f"Session is '{s.phase}', not awaiting approval.")
+    s.phase = "discarded"
+    s._workflow_finished = _monotonic()
+    _record_audit(s, "recovery_discarded", "rejected", {"timings": s.timing_report()})
+    s.log("HITL Gate", "Plan discarded by a human. Production was not touched.", "warn")
+    for name in (f"branch_{s.id}.db", f"scratch_{s.id}.db"):
+        try:
+            os.remove(os.path.join(db.DATA, name))
+        except OSError:
+            pass
+    return s
+
+
 def undo(sid):
     s = SESSIONS[sid]
     if s.phase != "applied":
@@ -301,8 +321,10 @@ def undo(sid):
     with db.LOCK:
         live = db.connect()
         undo_started = _monotonic()
+        saved_audit = list(audit.read_events(live))   # the snapshot restore below would roll the audit log back too
         try:
             tools.undo_recovery(live, os.path.join(db.DATA, f"backup_{s.id}.db"), os.path.join(db.DATA, f"backup_{s.id}.py"))
+            audit.restore_events(live, saved_audit)
             s.timings["undo_seconds"] = _elapsed(undo_started, _monotonic())
         except Exception as e:
             s.timings["undo_seconds"] = _elapsed(undo_started, _monotonic())

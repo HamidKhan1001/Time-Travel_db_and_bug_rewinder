@@ -1,37 +1,47 @@
 # Backend integration guide
 
-The frontend runs fully on mock data today. This guide lists every place that needs the backend, and the data shape each screen expects.
-
-**No endpoint paths are defined.** The PRD says to agree API shapes in hour 0–1 (§10). Pick the paths with the backend owner, then fill them in `src/services/api.js`.
+The frontend runs on mock data by default and on the real Python backend (`server.py`) with `npm run dev:live`. This guide lists every backend call, the endpoint it uses, and the data shape each screen expects.
 
 ## How the layers fit
 
 ```
-pages/ + components/   (UI only — never fetch, never import mocks)
-        │
+pages/ + components/   (UI only: never fetch, never import mocks)
+        |
 context/DemoContext.jsx (app state + actions, calls the service layer)
-        │
-services/api.js        (ONE function per backend action)  ──►  mocks/mockServer.js  (today)
-        │                                                  ──►  services/httpClient.js → backend  (later)
+        |
+services/api.js        (ONE function per backend action; picks mock or real)
+        |-- mocks/mockServer.js        (mock mode, the default)
+        '-- services/backend.js        (real mode) --> services/httpClient.js --> server.py
+                  '-- services/adapters.js   (pure functions: backend JSON -> UI shapes, unit-tested)
 ```
 
-## Switching to the real backend
+## Running against the real backend
 
-1. Copy `.env.example` to `.env.local` and set:
-   ```
-   VITE_USE_MOCKS=false
-   VITE_API_BASE_URL=http://localhost:8000
-   ```
-2. In `src/services/api.js`, uncomment the `request` import and replace each `notConnected('…')` with a real call, for example:
-   ```js
-   export function triggerWarehouseSync(scenarioId) {
-     if (USE_MOCKS) return mockServer.triggerWarehouseSync(scenarioId)
-     return request('<agreed path>', { method: 'POST', body: { scenarioId } })
-   }
-   ```
-3. If the backend returns a different shape, convert it inside `api.js` so components stay unchanged.
-4. Errors: `httpClient.js` throws `ApiError` with `message`, `code` and `status`. The UI shows `message` to the user, so send readable messages from the backend (`{ "message": "...", "code": "..." }`).
-5. CORS: the backend must allow the frontend origin (`http://localhost:5173` in development), or add a Vite `server.proxy` in `vite.config.js`.
+```bash
+python3 server.py            # repository root, port 8000
+cd frontend && npm run dev:live
+```
+
+Vite proxies `/api` to `http://127.0.0.1:8000` (set `API_PROXY_TARGET` to change it), and the server also allows CORS from `localhost`/`127.0.0.1`. `npm run build:live` produces the bundle that `server.py` serves at `/app/`.
+
+## Endpoint mapping
+
+| Service function | Backend call | Notes |
+|---|---|---|
+| `getScenarios()` | none (static list in `adapters.js`) | Only `warehouse-wipe` is available. The second scenario exists in the backend tests but has no API yet. |
+| `getLiveSnapshot()` | `GET /api/state` | Inventory is the 5 sample SKUs the backend returns. `previousStock` is remembered client-side between snapshots. |
+| `triggerWarehouseSync()` | `POST /api/demo/crash` then `GET /api/state` | |
+| `placeOrders()` | `POST /api/demo/orders` then `GET /api/state` | Blocked client-side if orders #1041+ already exist (the backend would add duplicates). |
+| `resetDemo()` | `POST /api/demo/reset` then `GET /api/state` | Also clears the audit log (the backend stores it in the database that is reset). |
+| `runTimeTravel()` | `POST /api/rewind`, then polls `GET /api/session/<id>` every 350 ms | `phase` maps to the 7 progress steps; resolves when `phase` is `awaiting_approval`. Cancel stops polling; the session itself keeps running on the server. |
+| `approveRecovery()` | `POST /api/session/<id>/approve` | Smoke checks come from `result.checks`. |
+| `discardRecovery()` | `POST /api/session/<id>/discard` | New endpoint. Only valid while `awaiting_approval`. |
+| `undoRecovery()` | `POST /api/session/<id>/undo` | |
+| `getAuditLog()` | `GET /api/audit?search=&status=&scenario=&page=&pageSize=` | New endpoint, built from the durable audit events. In-flight sessions are not listed. |
+| `getAuditSummary()` | `GET /api/audit/summary` | New endpoint. Discarded plans count in the total but not in the success rate. |
+| `getAuditEntry()` | `GET /api/audit/<id>` | New endpoint. |
+
+Field mapping worth knowing: backend risk is 0-100 and the UI uses 0-1; `legitimateRowsLost` is `0` only when the dry run on the clone passed (otherwise `null`, shown as a dash); when the agent finds no code fix, `plan.patch` is `null` and approval depends on the clone dry run.
 
 ## Actions that need the backend
 
@@ -52,7 +62,7 @@ services/api.js        (ONE function per backend action)  ──►  mocks/mockS
 
 ### Streaming progress (`runTimeTravel`)
 
-The UI expects progress events while the agent runs on the clone:
+The real backend reports progress through the session `phase`, which `adapters.stepsFromSession` turns into these events (the planning phase covers steps 2-4 together because the backend does not report them separately). The UI expects progress events while the agent runs on the clone:
 
 ```js
 onProgress({ stepIndex: 0, status: 'running', log: 'Forking clone from snapshot #88f2' })
@@ -128,7 +138,9 @@ These are the shapes the components read. Field names are suggestions — change
 { totalRecoveries: 1482, today: 12, successRate: 99.4, targetSuccessRate: 99 }
 ```
 
-## Open questions for the backend team
+## Open questions
+
+Resolved by the real backend: **2** (a discard endpoint was added), **6** (the audit log is cleared by Reset demo; it lives in the demo database), **8** (the drawer still shows the summary only).
 
 These affect the UI and are not settled by the PRD:
 

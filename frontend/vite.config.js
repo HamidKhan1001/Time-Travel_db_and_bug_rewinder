@@ -11,7 +11,9 @@ const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 
 const apiProxyTarget = process.env.API_PROXY_TARGET || 'http://127.0.0.1:8000'
 
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ command }) => ({
+  // The Python server serves the production build under /app/ (see server.py).
+  base: command === 'build' ? '/app/' : '/',
   plugins: [react()],
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
@@ -25,4 +27,4 @@ export default defineConfig({
       },
     },
   },
-})
+}))

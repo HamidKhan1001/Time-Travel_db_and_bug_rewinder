@@ -2,7 +2,7 @@
 
 Frontend for the hackathon project **Time-Travel DB & Bug Rewinder**. When a bad deploy or script corrupts production data, an agent rewinds a **clone** of the database to just before the crash, keeps the legitimate new writes, proposes a patch, and waits for a **human to approve** before anything touches production. Every apply can be undone.
 
-Built from the three Google Stitch designs (Console Incident, Console Review, Audit Log List) with React, Vite and Tailwind CSS. It runs entirely on **mock data** until the backend is connected — see [docs/BACKEND_INTEGRATION.md](docs/BACKEND_INTEGRATION.md).
+Built from the three Google Stitch designs (Console Incident, Console Review, Audit Log List) with React, Vite and Tailwind CSS. It runs on **mock data** by default, or against the real Python backend with `npm run dev:live` — see [docs/BACKEND_INTEGRATION.md](docs/BACKEND_INTEGRATION.md).
 
 ## Requirements
 
@@ -18,12 +18,17 @@ npm run dev
 
 Open http://localhost:5173. No backend or environment variables are needed for the mock mode.
 
+To use the real backend, start it from the repository root (`python3 server.py`) and run `npm run dev:live` here.
+
 ## Scripts
 
 | Command | What it does |
 |---|---|
 | `npm run dev` | Start the development server with hot reload on http://localhost:5173 |
-| `npm run build` | Production build into `dist/` |
+| `npm run dev:live` | Same, but against the real Python backend (proxies `/api` to port 8000) |
+| `npm run build` | Production build into `dist/` (served by `server.py` at `/app/`) |
+| `npm run build:live` | Production build wired to the real backend (use this one for `/app/`) |
+| `npm test` | Unit tests for the backend adapters (`node --test`, no extra dependencies) |
 | `npm run preview` | Serve the production build locally on http://localhost:4173 |
 
 ## Screens

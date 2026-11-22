@@ -62,7 +62,7 @@ export default function StatStrip({ plan }) {
       <p className="mt-2.5 text-[11px] text-slate-500 flex flex-wrap items-center gap-x-1.5 gap-y-1">
         <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
           <Icon name="verified" className="text-[14px] text-emerald-600" />
-          Legitimate rows lost: <strong className="font-mono text-emerald-700">{stats.legitimateRowsLost}</strong>
+          Legitimate rows lost: <strong className="font-mono text-emerald-700">{stats.legitimateRowsLost ?? '—'}</strong>
         </span>
         <span className="hidden sm:inline text-slate-300">·</span>
         <span>
