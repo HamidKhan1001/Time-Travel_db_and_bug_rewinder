@@ -12,7 +12,7 @@ Requirements:
 
 - Python 3.9+ with SQLite JSON functions enabled (`json_object()`; SQLite 3.38+ is typical).
 - No third-party packages are required for the core demo or tests.
-- Optional Node.js is used only for the JavaScript UI unit tests.
+- Node.js 20.19+ or 22.12+ is needed only to build or develop the React UI (`frontend/`); the Python tests do not need it.
 - Optional Gemini/Bedrock LLM providers require separate packages and credentials; see [`docs/ai-setup.md`](docs/ai-setup.md).
 
 ```bash
@@ -32,7 +32,7 @@ python3 reset.py
 
 ## React frontend (`frontend/`)
 
-`frontend/` contains a separate React + Vite + Tailwind CSS interface built from the Google Stitch designs (Console, Review & approve, Audit log). It sits alongside the existing `web/` dashboard (which stays at `/`) and talks to the same API.
+`frontend/` contains a separate React + Vite + Tailwind CSS interface built from the Google Stitch designs (Console, Review & approve, Audit log). It is the only UI: `python3 server.py` redirects `/` to the built app at `/app/`.
 
 It requires Node.js 20.19+ or 22.12+ and runs in two modes:
 
@@ -51,7 +51,7 @@ To serve the React app from the Python server itself (one process, one port):
 ```bash
 cd frontend && npm install && npm run build:live
 cd .. && python3 server.py
-# open http://localhost:8000/app/   (the original dashboard stays at http://localhost:8000/)
+# open http://localhost:8000/app/   (http://localhost:8000/ redirects there)
 ```
 
 `frontend/src/services/backend.js` calls the API and `frontend/src/services/adapters.js` translates the backend JSON into the shapes the screens read. Details: [`frontend/docs/BACKEND_INTEGRATION.md`](frontend/docs/BACKEND_INTEGRATION.md). Frontend unit tests: `cd frontend && npm test`.
@@ -63,7 +63,7 @@ cd .. && python3 server.py
 - `timetravel/agent.py` orchestrates the session, enforces the human-in-the-loop approval gate, and exposes undo.
 - `timetravel/guard.py` deterministically blocks dangerous SQL such as `DROP`, `TRUNCATE`, `ALTER`, and unscoped `UPDATE`/`DELETE` unless explicitly approved.
 - `timetravel/recovery/` adds durable transaction history, deterministic recovery plans, FK-aware execution, conflict checks, and SHA-256 checksum verification over configured business-table rows.
-- `web/index.html`, `web/js/recovery_data.js`, and `web/js/recovery_view.js` render the dashboard, proposed recovery projection, actual post-apply values, lifecycle status, verification state, and undo state.
+- `frontend/` is the React UI (console, review and approve, audit log). The API still returns `recovery_preview`, `actual_recovery`, `verification` and `undo_state` on every session; the React screens do not display those projection fields yet.
 
 Recovery sequence:
 
@@ -126,9 +126,9 @@ python3 -m unittest tests.test_guard tests.test_guard_fuzz -v
 # Recovery engine, integrity, audit, API, SSE, projection, and timing tests
 python3 -m unittest discover -s tests -p "test_*.py"
 
-# Projection and JavaScript UI tests
-python3 -m unittest tests.test_recovery_projection tests.test_recovery_ui -v
-node --test tests/js/recovery_ui.test.js
+# Projection tests, and the frontend adapter tests
+python3 -m unittest tests.test_recovery_projection -v
+(cd frontend && npm test)
 
 # Isolated headless demo
 TT_PACE=0 python3 tests/e2e_isolated.py
