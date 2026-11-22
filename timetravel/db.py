@@ -59,10 +59,15 @@ DROP TABLE IF EXISTS customers;
 
 
 def connect(path=LIVE):
-    c = sqlite3.connect(path, timeout=30, check_same_thread=False, isolation_level=None)
+    from .recovery import transaction_logger
+    c = sqlite3.connect(path, timeout=30, check_same_thread=False, isolation_level=None,
+                        factory=transaction_logger.RecoveryConnection)
     c.row_factory = sqlite3.Row
     c.create_function("app_now", 0, clock.now)
     c.execute("PRAGMA foreign_keys=ON")
+    transaction_logger.install(c, clock.now)
+    if path == LIVE and transaction_logger.schema_ready(c, TABLES):
+        transaction_logger.ensure_schema(c, TABLES, clock.now)
     return c
 
 
@@ -80,6 +85,8 @@ def create_schema(c):
                   f"VALUES(app_now(),'{t}','U',NEW.{pk},json_object({o}),json_object({n})); END")
         c.execute(f"CREATE TRIGGER {t}_ad AFTER DELETE ON {t} BEGIN INSERT INTO changelog(ts,tbl,op,pk,old,new) "
                   f"VALUES(app_now(),'{t}','D',OLD.{pk},json_object({o}),NULL); END")
+    from .recovery import transaction_logger
+    transaction_logger.ensure_schema(c, TABLES, clock.now)
 
 
 def clone(src_conn, dest_path):

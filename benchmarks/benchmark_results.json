@@ -1,0 +1,718 @@
+{
+  "datasets": [
+    {
+      "dataset_rows": 1000,
+      "errors": [],
+      "runs": [
+        {
+          "apply_seconds": 0.5352674900004786,
+          "audit_status": "committed",
+          "checksum_verification_seconds": 0.1648559089990158,
+          "commit_seconds": 0.01657318100114935,
+          "database_bytes": 1560576,
+          "dataset_rows": 1000,
+          "event_count": 1000,
+          "execute_plan_seconds": 1.867635174001407,
+          "faulty_transaction_id": 2,
+          "integrity_status": "VERIFIED",
+          "iteration": 1,
+          "peak_rss_mb_end": 28.4453125,
+          "peak_rss_mb_start": 20.68359375,
+          "plan_step_count": 1000,
+          "preflight_seconds": 0.738370961000328,
+          "recovery_duration_seconds": 2.1850590799986094,
+          "recovery_execution_seconds": 1.7027792650023912,
+          "recovery_planning_seconds": 0.10203081500003464,
+          "rows_checked": 1050,
+          "rss_growth_mb": 7.76171875,
+          "seed": 20261122,
+          "simulation_seconds": 0.40313411799979804,
+          "snapshot_bytes": 495616,
+          "snapshot_seconds": 0.01737286800016591,
+          "transaction_history_seconds": 0.15183609800078557,
+          "unaccounted_seconds": 0.04618412499621627
+        },
+        {
+          "apply_seconds": 0.6072544639991975,
+          "audit_status": "committed",
+          "checksum_verification_seconds": 0.1436349350005912,
+          "commit_seconds": 0.015040733998830547,
+          "database_bytes": 1560576,
+          "dataset_rows": 1000,
+          "event_count": 1000,
+          "execute_plan_seconds": 1.2149065760004305,
+          "faulty_transaction_id": 2,
+          "integrity_status": "VERIFIED",
+          "iteration": 2,
+          "peak_rss_mb_end": 30.69140625,
+          "peak_rss_mb_start": 28.453125,
+          "plan_step_count": 1000,
+          "preflight_seconds": 0.31980165699860663,
+          "recovery_duration_seconds": 1.4845523299991328,
+          "recovery_execution_seconds": 1.0712716409998393,
+          "recovery_planning_seconds": 0.07246591799957969,
+          "rows_checked": 1050,
+          "rss_growth_mb": 2.23828125,
+          "seed": 20261122,
+          "simulation_seconds": 0.1188861110003927,
+          "snapshot_bytes": 495616,
+          "snapshot_seconds": 0.03132141700007196,
+          "transaction_history_seconds": 0.13683176700033073,
+          "unaccounted_seconds": 0.0290266519987199
+        },
+        {
+          "apply_seconds": 0.5260396630001196,
+          "audit_status": "committed",
+          "checksum_verification_seconds": 0.199159611000141,
+          "commit_seconds": 0.03845410699977947,
+          "database_bytes": 1560576,
+          "dataset_rows": 1000,
+          "event_count": 1000,
+          "execute_plan_seconds": 2.0311711199992715,
+          "faulty_transaction_id": 2,
+          "integrity_status": "VERIFIED",
+          "iteration": 3,
+          "peak_rss_mb_end": 32.3203125,
+          "peak_rss_mb_start": 30.69140625,
+          "plan_step_count": 1000,
+          "preflight_seconds": 0.42026227499991364,
+          "recovery_duration_seconds": 2.2064483020003536,
+          "recovery_execution_seconds": 1.8320115089991305,
+          "recovery_planning_seconds": 0.05388693300119485,
+          "rows_checked": 1050,
+          "rss_growth_mb": 1.62890625,
+          "seed": 20261122,
+          "simulation_seconds": 0.8142109700002038,
+          "snapshot_bytes": 495616,
+          "snapshot_seconds": 0.012086654000086128,
+          "transaction_history_seconds": 0.08618031900005008,
+          "unaccounted_seconds": 0.02312327599975106
+        }
+      ],
+      "summary": {
+        "apply_seconds": {
+          "average": 0.556187,
+          "maximum": 0.607254,
+          "median": 0.535267,
+          "minimum": 0.52604
+        },
+        "checksum_verification_seconds": {
+          "average": 0.169217,
+          "maximum": 0.19916,
+          "median": 0.164856,
+          "minimum": 0.143635
+        },
+        "commit_seconds": {
+          "average": 0.023356,
+          "maximum": 0.038454,
+          "median": 0.016573,
+          "minimum": 0.015041
+        },
+        "execute_plan_seconds": {
+          "average": 1.704571,
+          "maximum": 2.031171,
+          "median": 1.867635,
+          "minimum": 1.214907
+        },
+        "peak_rss_mb_end": {
+          "average": 30.485677,
+          "maximum": 32.320312,
+          "median": 30.691406,
+          "minimum": 28.445312
+        },
+        "preflight_seconds": {
+          "average": 0.492812,
+          "maximum": 0.738371,
+          "median": 0.420262,
+          "minimum": 0.319802
+        },
+        "recovery_duration_seconds": {
+          "average": 1.958687,
+          "maximum": 2.206448,
+          "median": 2.185059,
+          "minimum": 1.484552
+        },
+        "recovery_execution_seconds": {
+          "average": 1.535354,
+          "maximum": 1.832012,
+          "median": 1.702779,
+          "minimum": 1.071272
+        },
+        "recovery_planning_seconds": {
+          "average": 0.076128,
+          "maximum": 0.102031,
+          "median": 0.072466,
+          "minimum": 0.053887
+        },
+        "rss_growth_mb": {
+          "average": 3.876302,
+          "maximum": 7.761719,
+          "median": 2.238281,
+          "minimum": 1.628906
+        },
+        "simulation_seconds": {
+          "average": 0.44541,
+          "maximum": 0.814211,
+          "median": 0.403134,
+          "minimum": 0.118886
+        },
+        "snapshot_seconds": {
+          "average": 0.02026,
+          "maximum": 0.031321,
+          "median": 0.017373,
+          "minimum": 0.012087
+        },
+        "transaction_history_seconds": {
+          "average": 0.124949,
+          "maximum": 0.151836,
+          "median": 0.136832,
+          "minimum": 0.08618
+        }
+      }
+    },
+    {
+      "dataset_rows": 10000,
+      "errors": [],
+      "runs": [
+        {
+          "apply_seconds": 9.602125258999877,
+          "audit_status": "committed",
+          "checksum_verification_seconds": 2.2202499670002,
+          "commit_seconds": 0.09732344700023532,
+          "database_bytes": 14680064,
+          "dataset_rows": 10000,
+          "event_count": 10000,
+          "execute_plan_seconds": 25.13347290100137,
+          "faulty_transaction_id": 2,
+          "integrity_status": "VERIFIED",
+          "iteration": 1,
+          "peak_rss_mb_end": 81.6953125,
+          "peak_rss_mb_start": 32.3359375,
+          "plan_step_count": 10000,
+          "preflight_seconds": 8.782334814000933,
+          "recovery_duration_seconds": 28.36506721600017,
+          "recovery_execution_seconds": 22.91322293400117,
+          "recovery_planning_seconds": 1.3020217200009938,
+          "rows_checked": 10050,
+          "rss_growth_mb": 49.359375,
+          "seed": 20261122,
+          "simulation_seconds": 4.344465210000635,
+          "snapshot_bytes": 3940352,
+          "snapshot_seconds": 0.30052017199886905,
+          "transaction_history_seconds": 1.301207163998697,
+          "unaccounted_seconds": 0.32784525900024164
+        },
+        {
+          "apply_seconds": 9.471613911000532,
+          "audit_status": "committed",
+          "checksum_verification_seconds": 1.970505220000632,
+          "commit_seconds": 0.2319835359994613,
+          "database_bytes": 14680064,
+          "dataset_rows": 10000,
+          "event_count": 10000,
+          "execute_plan_seconds": 22.962359993000064,
+          "faulty_transaction_id": 2,
+          "integrity_status": "VERIFIED",
+          "iteration": 2,
+          "peak_rss_mb_end": 87.5078125,
+          "peak_rss_mb_start": 81.6953125,
+          "plan_step_count": 10000,
+          "preflight_seconds": 5.743209379999826,
+          "recovery_duration_seconds": 25.721741847000885,
+          "recovery_execution_seconds": 20.99185477299943,
+          "recovery_planning_seconds": 1.0299687250007992,
+          "rows_checked": 10050,
+          "rss_growth_mb": 5.8125,
+          "seed": 20261122,
+          "simulation_seconds": 5.484989124999629,
+          "snapshot_bytes": 3940352,
+          "snapshot_seconds": 0.11070217599990428,
+          "transaction_history_seconds": 1.2966739340008644,
+          "unaccounted_seconds": 0.32203701899925363
+        },
+        {
+          "apply_seconds": 12.235606516000189,
+          "audit_status": "committed",
+          "checksum_verification_seconds": 2.9042173120014922,
+          "commit_seconds": 0.0760481819997949,
+          "database_bytes": 14680064,
+          "dataset_rows": 10000,
+          "event_count": 10000,
+          "execute_plan_seconds": 28.404612840000482,
+          "faulty_transaction_id": 2,
+          "integrity_status": "VERIFIED",
+          "iteration": 3,
+          "peak_rss_mb_end": 92.16796875,
+          "peak_rss_mb_start": 87.51171875,
+          "plan_step_count": 10000,
+          "preflight_seconds": 8.522401592999813,
+          "recovery_duration_seconds": 32.48175596100009,
+          "recovery_execution_seconds": 25.50039552799899,
+          "recovery_planning_seconds": 1.80842637600108,
+          "rows_checked": 10050,
+          "rss_growth_mb": 4.65625,
+          "seed": 20261122,
+          "simulation_seconds": 4.595346314999915,
+          "snapshot_bytes": 3940352,
+          "snapshot_seconds": 0.13802966399998695,
+          "transaction_history_seconds": 1.815230177999183,
+          "unaccounted_seconds": 0.31545690299935814
+        }
+      ],
+      "summary": {
+        "apply_seconds": {
+          "average": 10.436449,
+          "maximum": 12.235607,
+          "median": 9.602125,
+          "minimum": 9.471614
+        },
+        "checksum_verification_seconds": {
+          "average": 2.364991,
+          "maximum": 2.904217,
+          "median": 2.22025,
+          "minimum": 1.970505
+        },
+        "commit_seconds": {
+          "average": 0.135118,
+          "maximum": 0.231984,
+          "median": 0.097323,
+          "minimum": 0.076048
+        },
+        "execute_plan_seconds": {
+          "average": 25.500149,
+          "maximum": 28.404613,
+          "median": 25.133473,
+          "minimum": 22.96236
+        },
+        "peak_rss_mb_end": {
+          "average": 87.123698,
+          "maximum": 92.167969,
+          "median": 87.507812,
+          "minimum": 81.695312
+        },
+        "preflight_seconds": {
+          "average": 7.682649,
+          "maximum": 8.782335,
+          "median": 8.522402,
+          "minimum": 5.743209
+        },
+        "recovery_duration_seconds": {
+          "average": 28.856188,
+          "maximum": 32.481756,
+          "median": 28.365067,
+          "minimum": 25.721742
+        },
+        "recovery_execution_seconds": {
+          "average": 23.135158,
+          "maximum": 25.500396,
+          "median": 22.913223,
+          "minimum": 20.991855
+        },
+        "recovery_planning_seconds": {
+          "average": 1.380139,
+          "maximum": 1.808426,
+          "median": 1.302022,
+          "minimum": 1.029969
+        },
+        "rss_growth_mb": {
+          "average": 19.942708,
+          "maximum": 49.359375,
+          "median": 5.8125,
+          "minimum": 4.65625
+        },
+        "simulation_seconds": {
+          "average": 4.808267,
+          "maximum": 5.484989,
+          "median": 4.595346,
+          "minimum": 4.344465
+        },
+        "snapshot_seconds": {
+          "average": 0.183084,
+          "maximum": 0.30052,
+          "median": 0.13803,
+          "minimum": 0.110702
+        },
+        "transaction_history_seconds": {
+          "average": 1.471037,
+          "maximum": 1.81523,
+          "median": 1.301207,
+          "minimum": 1.296674
+        }
+      }
+    },
+    {
+      "dataset_rows": 100000,
+      "errors": [],
+      "runs": [
+        {
+          "apply_seconds": 137.60197503400013,
+          "audit_status": "committed",
+          "checksum_verification_seconds": 19.743629065000277,
+          "commit_seconds": 0.2035669240012794,
+          "database_bytes": 149311488,
+          "dataset_rows": 100000,
+          "event_count": 100000,
+          "execute_plan_seconds": 319.37365802800014,
+          "faulty_transaction_id": 2,
+          "integrity_status": "VERIFIED",
+          "iteration": 1,
+          "peak_rss_mb_end": 530.65234375,
+          "peak_rss_mb_start": 92.16796875,
+          "plan_step_count": 100000,
+          "preflight_seconds": 83.84988946500016,
+          "recovery_duration_seconds": 359.07546629100034,
+          "recovery_execution_seconds": 299.63002896299986,
+          "recovery_planning_seconds": 13.942960680000397,
+          "rows_checked": 100050,
+          "rss_growth_mb": 438.484375,
+          "seed": 20261122,
+          "simulation_seconds": 76.57971172399994,
+          "snapshot_bytes": 40001536,
+          "snapshot_seconds": 2.0171239609990153,
+          "transaction_history_seconds": 19.819071115000042,
+          "unaccounted_seconds": 3.9226525070007483
+        },
+        {
+          "apply_seconds": 52.153238512000826,
+          "audit_status": "committed",
+          "checksum_verification_seconds": 10.413682144999257,
+          "commit_seconds": 0.1623610410006222,
+          "database_bytes": 149311488,
+          "dataset_rows": 100000,
+          "event_count": 100000,
+          "execute_plan_seconds": 216.00238722699942,
+          "faulty_transaction_id": 2,
+          "integrity_status": "VERIFIED",
+          "iteration": 2,
+          "peak_rss_mb_end": 535.625,
+          "peak_rss_mb_start": 530.65234375,
+          "plan_step_count": 100000,
+          "preflight_seconds": 116.81094837300043,
+          "recovery_duration_seconds": 347.71810769900003,
+          "recovery_execution_seconds": 205.58870508200016,
+          "recovery_planning_seconds": 105.571127823001,
+          "rows_checked": 100050,
+          "rss_growth_mb": 4.97265625,
+          "seed": 20261122,
+          "simulation_seconds": 35.60364796399881,
+          "snapshot_bytes": 40001536,
+          "snapshot_seconds": 1.3770565100003296,
+          "transaction_history_seconds": 19.96176357299919,
+          "unaccounted_seconds": 4.805772566000087
+        },
+        {
+          "apply_seconds": 45.08320598099999,
+          "audit_status": "committed",
+          "checksum_verification_seconds": 13.10142187800011,
+          "commit_seconds": 0.15253811399998085,
+          "database_bytes": 149311488,
+          "dataset_rows": 100000,
+          "event_count": 100000,
+          "execute_plan_seconds": 136.8595547320001,
+          "faulty_transaction_id": 2,
+          "integrity_status": "VERIFIED",
+          "iteration": 3,
+          "peak_rss_mb_end": 535.625,
+          "peak_rss_mb_start": 535.625,
+          "plan_step_count": 100000,
+          "preflight_seconds": 39.51245910000034,
+          "recovery_duration_seconds": 153.10073226500026,
+          "recovery_execution_seconds": 123.758132854,
+          "recovery_planning_seconds": 5.2517120339998655,
+          "rows_checked": 100050,
+          "rss_growth_mb": 0.0,
+          "seed": 20261122,
+          "simulation_seconds": 38.27781589299957,
+          "snapshot_bytes": 40001536,
+          "snapshot_seconds": 1.064849566999328,
+          "transaction_history_seconds": 8.633162703999915,
+          "unaccounted_seconds": 1.2914532280010462
+        }
+      ],
+      "summary": {
+        "apply_seconds": {
+          "average": 78.279473,
+          "maximum": 137.601975,
+          "median": 52.153239,
+          "minimum": 45.083206
+        },
+        "checksum_verification_seconds": {
+          "average": 14.419578,
+          "maximum": 19.743629,
+          "median": 13.101422,
+          "minimum": 10.413682
+        },
+        "commit_seconds": {
+          "average": 0.172822,
+          "maximum": 0.203567,
+          "median": 0.162361,
+          "minimum": 0.152538
+        },
+        "execute_plan_seconds": {
+          "average": 224.078533,
+          "maximum": 319.373658,
+          "median": 216.002387,
+          "minimum": 136.859555
+        },
+        "peak_rss_mb_end": {
+          "average": 533.967448,
+          "maximum": 535.625,
+          "median": 535.625,
+          "minimum": 530.652344
+        },
+        "preflight_seconds": {
+          "average": 80.057766,
+          "maximum": 116.810948,
+          "median": 83.849889,
+          "minimum": 39.512459
+        },
+        "recovery_duration_seconds": {
+          "average": 286.631435,
+          "maximum": 359.075466,
+          "median": 347.718108,
+          "minimum": 153.100732
+        },
+        "recovery_execution_seconds": {
+          "average": 209.658956,
+          "maximum": 299.630029,
+          "median": 205.588705,
+          "minimum": 123.758133
+        },
+        "recovery_planning_seconds": {
+          "average": 41.5886,
+          "maximum": 105.571128,
+          "median": 13.942961,
+          "minimum": 5.251712
+        },
+        "rss_growth_mb": {
+          "average": 147.81901,
+          "maximum": 438.484375,
+          "median": 4.972656,
+          "minimum": 0.0
+        },
+        "simulation_seconds": {
+          "average": 50.153725,
+          "maximum": 76.579712,
+          "median": 38.277816,
+          "minimum": 35.603648
+        },
+        "snapshot_seconds": {
+          "average": 1.486343,
+          "maximum": 2.017124,
+          "median": 1.377057,
+          "minimum": 1.06485
+        },
+        "transaction_history_seconds": {
+          "average": 16.137999,
+          "maximum": 19.961764,
+          "median": 19.819071,
+          "minimum": 8.633163
+        }
+      }
+    },
+    {
+      "dataset_rows": 500000,
+      "errors": [],
+      "runs": [
+        {
+          "apply_seconds": 199.9376230779999,
+          "audit_status": "committed",
+          "checksum_verification_seconds": 63.02578264699878,
+          "commit_seconds": 1.4356393430007302,
+          "database_bytes": 749584384,
+          "dataset_rows": 500000,
+          "event_count": 500000,
+          "execute_plan_seconds": 556.758154866,
+          "faulty_transaction_id": 2,
+          "integrity_status": "VERIFIED",
+          "iteration": 1,
+          "peak_rss_mb_end": 1717.20703125,
+          "peak_rss_mb_start": 535.625,
+          "plan_step_count": 500000,
+          "preflight_seconds": 173.87210529999902,
+          "recovery_duration_seconds": 652.2860402730003,
+          "recovery_execution_seconds": 493.73237221900126,
+          "recovery_planning_seconds": 40.54527301100097,
+          "rows_checked": 500050,
+          "rss_growth_mb": 1181.58203125,
+          "seed": 20261122,
+          "simulation_seconds": 112.39795141800096,
+          "snapshot_bytes": 201584640,
+          "snapshot_seconds": 4.023676593000346,
+          "transaction_history_seconds": 35.239705743999366,
+          "unaccounted_seconds": 15.719230058999528
+        },
+        {
+          "apply_seconds": 204.66672527599985,
+          "audit_status": "committed",
+          "checksum_verification_seconds": 68.91915878600048,
+          "commit_seconds": 1.9341734669997095,
+          "database_bytes": 749584384,
+          "dataset_rows": 500000,
+          "event_count": 500000,
+          "execute_plan_seconds": 536.8733910329993,
+          "faulty_transaction_id": 2,
+          "integrity_status": "VERIFIED",
+          "iteration": 2,
+          "peak_rss_mb_end": 1768.3203125,
+          "peak_rss_mb_start": 1717.20703125,
+          "plan_step_count": 500000,
+          "preflight_seconds": 124.56965013400077,
+          "recovery_duration_seconds": 603.807233513,
+          "recovery_execution_seconds": 467.9542322469988,
+          "recovery_planning_seconds": 26.215953083001295,
+          "rows_checked": 500050,
+          "rss_growth_mb": 51.11328125,
+          "seed": 20261122,
+          "simulation_seconds": 130.56223564599895,
+          "snapshot_bytes": 201584640,
+          "snapshot_seconds": 2.664126801999373,
+          "transaction_history_seconds": 31.458748516000924,
+          "unaccounted_seconds": 6.5950140789991565
+        },
+        {
+          "apply_seconds": 226.24516642100025,
+          "audit_status": "committed",
+          "checksum_verification_seconds": 47.68927535500006,
+          "commit_seconds": 1.6802608289999625,
+          "database_bytes": 749584384,
+          "dataset_rows": 500000,
+          "event_count": 500000,
+          "execute_plan_seconds": 666.5382634100006,
+          "faulty_transaction_id": 2,
+          "integrity_status": "VERIFIED",
+          "iteration": 3,
+          "peak_rss_mb_end": 1807.41015625,
+          "peak_rss_mb_start": 1768.3203125,
+          "plan_step_count": 500000,
+          "preflight_seconds": 242.15750404500068,
+          "recovery_duration_seconds": 798.294246866999,
+          "recovery_execution_seconds": 618.8489880550005,
+          "recovery_planning_seconds": 52.86318043499887,
+          "rows_checked": 500050,
+          "rss_growth_mb": 39.08984375,
+          "seed": 20261122,
+          "simulation_seconds": 143.4768667520002,
+          "snapshot_bytes": 201584640,
+          "snapshot_seconds": 6.856438777000221,
+          "transaction_history_seconds": 53.94720905500071,
+          "unaccounted_seconds": 18.089155189998564
+        }
+      ],
+      "summary": {
+        "apply_seconds": {
+          "average": 210.283172,
+          "maximum": 226.245166,
+          "median": 204.666725,
+          "minimum": 199.937623
+        },
+        "checksum_verification_seconds": {
+          "average": 59.878072,
+          "maximum": 68.919159,
+          "median": 63.025783,
+          "minimum": 47.689275
+        },
+        "commit_seconds": {
+          "average": 1.683358,
+          "maximum": 1.934173,
+          "median": 1.680261,
+          "minimum": 1.435639
+        },
+        "execute_plan_seconds": {
+          "average": 586.72327,
+          "maximum": 666.538263,
+          "median": 556.758155,
+          "minimum": 536.873391
+        },
+        "peak_rss_mb_end": {
+          "average": 1764.3125,
+          "maximum": 1807.410156,
+          "median": 1768.320312,
+          "minimum": 1717.207031
+        },
+        "preflight_seconds": {
+          "average": 180.199753,
+          "maximum": 242.157504,
+          "median": 173.872105,
+          "minimum": 124.56965
+        },
+        "recovery_duration_seconds": {
+          "average": 684.79584,
+          "maximum": 798.294247,
+          "median": 652.28604,
+          "minimum": 603.807234
+        },
+        "recovery_execution_seconds": {
+          "average": 526.845198,
+          "maximum": 618.848988,
+          "median": 493.732372,
+          "minimum": 467.954232
+        },
+        "recovery_planning_seconds": {
+          "average": 39.874802,
+          "maximum": 52.86318,
+          "median": 40.545273,
+          "minimum": 26.215953
+        },
+        "rss_growth_mb": {
+          "average": 423.928385,
+          "maximum": 1181.582031,
+          "median": 51.113281,
+          "minimum": 39.089844
+        },
+        "simulation_seconds": {
+          "average": 128.812351,
+          "maximum": 143.476867,
+          "median": 130.562236,
+          "minimum": 112.397951
+        },
+        "snapshot_seconds": {
+          "average": 4.514747,
+          "maximum": 6.856439,
+          "median": 4.023677,
+          "minimum": 2.664127
+        },
+        "transaction_history_seconds": {
+          "average": 40.215221,
+          "maximum": 53.947209,
+          "median": 35.239706,
+          "minimum": 31.458749
+        }
+      }
+    }
+  ],
+  "environment": {
+    "captured_at_utc": "2026-11-22T01:02:48+00:00",
+    "cpu_brand": "Intel(R) Core(TM) i5-7360U CPU @ 2.30GHz",
+    "git_commit": "5d1e083",
+    "logical_cpus": 4,
+    "machine": "x86_64",
+    "platform": "macOS-13.7.8-x86_64-i386-64bit-Mach-O",
+    "python_version": "3.14.6",
+    "sqlite_version": "3.53.2",
+    "system": "Darwin",
+    "total_memory_gb": 8.0
+  },
+  "metadata": {
+    "command": "python3 benchmarks/benchmark_recovery.py",
+    "dataset_shape": "N inventory rows plus 10 customers, 20 orders, and 20 order items",
+    "datasets_requested": [
+      1000,
+      10000,
+      100000,
+      500000
+    ],
+    "faulty_operation": "UPDATE inventory SET stock = 0",
+    "generated_at_utc": "2026-11-22T01:02:48+00:00",
+    "iterations_requested": 3,
+    "memory_source": "resource.getrusage process high-water mark",
+    "notes": [
+      "Every timing comes from an actual recovery execution; no estimates or delays are used.",
+      "Peak RSS is a process-wide high-water mark and does not decrease between iterations.",
+      "Recovery execution excludes live checksum verification but includes preflight, simulation, apply, and commit.",
+      "Total recovery duration is wall-clock time from snapshot creation through execute_plan."
+    ],
+    "seed": 20261122,
+    "timing_source": "time.perf_counter"
+  }
+}
