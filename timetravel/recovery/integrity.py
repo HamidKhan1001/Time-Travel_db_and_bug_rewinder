@@ -20,7 +20,16 @@ def _check(name, ok, detail):
 
 
 def _canonical(value):
-    return json.dumps(value, sort_keys=True, separators=(",", ":"), default=str)
+    def normalize(item):
+        if isinstance(item, float):
+            return float(format(item, ".15g"))
+        if isinstance(item, list):
+            return [normalize(child) for child in item]
+        if isinstance(item, dict):
+            return {key: normalize(child) for key, child in item.items()}
+        return item
+
+    return json.dumps(normalize(value), sort_keys=True, separators=(",", ":"), default=str)
 
 
 def _columns(conn, table):
@@ -62,10 +71,15 @@ def _expected_states(plan):
     expected = {}
     for step in sorted(plan.steps, key=lambda item: item.event_id):
         key = (step.tbl, step.pk_json)
-        if step.source_op in ("I", "U"):
-            expected[key] = (step, step.new_row())
-        else:
+        if step.source_op == "I":
+            # INSERT captured by the faulty transaction; compensation is DELETE.
             expected[key] = (step, None)
+        elif step.source_op == "U":
+            # UPDATE compensation restores OLD values.
+            expected[key] = (step, step.old_row())
+        else:
+            # DELETE compensation restores the deleted row.
+            expected[key] = (step, step.old_row())
     return expected
 
 
@@ -221,7 +235,7 @@ def analyze_foreign_key_conflicts(conn, plan, tables, keys):
 
 
 def analyze_conflicts(conn, plan, tables, keys=None):
-    """Compare the plan's expected row states with the current database before any write."""
+    """Compare the plan's compensated target states with the database before writes."""
     conflicts = []
     violations = conn.execute("PRAGMA foreign_key_check").fetchall()
     if violations:
@@ -237,23 +251,46 @@ def analyze_conflicts(conn, plan, tables, keys=None):
             "actual": None,
         })
 
-    for key, (step, expected_row) in _expected_states(plan).items():
-        table, pk_json = key
+    for step in plan.steps:
+        table = step.tbl
+        pk_json = step.pk_json
         actual_row = _row_by_pk(conn, table, tables[table], step.pk)
-        if expected_row is None:
+
+        if step.source_op == "I":
+            if actual_row is None:
+                continue
+            captured_row = step.new_row()
+            if captured_row is not None and _canonical(actual_row) == _canonical(captured_row):
+                continue
+            conflicts.append(_conflict(
+                "duplicate-primary-key", step,
+                f"{table} {pk_json} is present with a different or later value; recovery would overwrite it",
+                captured_row, actual_row))
+
+        elif step.source_op == "U":
+            captured_row = step.new_row()
+            if actual_row is None:
+                conflicts.append(_conflict(
+                    "missing-record", step,
+                    f"{table} {pk_json} is missing; recovery cannot restore it safely",
+                    step.old_row(), None))
+            elif captured_row is not None and _canonical(actual_row) != _canonical(captured_row):
+                if _canonical(actual_row) == _canonical(step.old_row()):
+                    continue
+                conflicts.append(_conflict(
+                    "conflicting-change", step,
+                    f"{table} {pk_json} changed after the captured event",
+                    step.old_row(), actual_row))
+
+        else:
+            target_row = step.old_row()
             if actual_row is not None:
-                kind = "duplicate-primary-key" if step.op == "I" else "unexpected-record"
-                conflicts.append(_conflict(kind, step,
-                                           f"{table} {pk_json} already exists; recovery would overwrite it",
-                                           None, actual_row))
-        elif actual_row is None:
-            conflicts.append(_conflict("missing-record", step,
-                                       f"{table} {pk_json} is missing; recovery cannot restore it safely",
-                                       expected_row, None))
-        elif _canonical(actual_row) != _canonical(expected_row):
-            conflicts.append(_conflict("conflicting-change", step,
-                                       f"{table} {pk_json} changed after the captured event",
-                                       expected_row, actual_row))
+                if target_row is not None and _canonical(actual_row) == _canonical(target_row):
+                    continue
+                conflicts.append(_conflict(
+                    "duplicate-primary-key", step,
+                    f"{table} {pk_json} already exists; recovery would overwrite it",
+                    target_row, actual_row))
 
     written = [step for step in plan.steps if step.op in ("I", "U")]
     unique_by_table = {}

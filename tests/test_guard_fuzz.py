@@ -1,6 +1,7 @@
 """Deterministic guard fuzz/corpus tests: mixed case, comments, Unicode, and semicolon variants."""
 import sys
 import os
+import random
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -111,6 +112,86 @@ class GuardFuzzTests(unittest.TestCase):
         for sql in unscoped:
             with self.subTest(sql=sql):
                 self.assertFalse(guard.analyze(sql)["allowed"])
+
+    def test_seeded_random_policy_fuzz(self):
+        """Generate reproducible random variants; never execute generated SQL."""
+        rng = random.Random(20261122)
+        whitespace = (" ", "  ", "\n", "\t", "\r\n", "\u2003")
+
+        def case_variants(word):
+            return {
+                word.lower(), word.upper(), word.title(),
+                "".join(ch.upper() if i % 2 else ch.lower() for i, ch in enumerate(word)),
+            }
+
+        generated = []
+
+        for i in range(150):
+            ws = rng.choice(whitespace)
+            update = rng.choice(tuple(case_variants("UPDATE")))
+            set_word = rng.choice(tuple(case_variants("SET")))
+            where_word = rng.choice(tuple(case_variants("WHERE")))
+            if i % 3 == 0:
+                sql = f"{ws}{update}{ws}inventory{ws}{set_word}{ws}stock=0"
+                expected = False
+            elif i % 3 == 1:
+                sql = f"{ws}{update}{ws}inventory{ws}{set_word}{ws}stock=5{ws}{where_word}{ws}sku='APX-0007'"
+                expected = True
+            else:
+                sql = f"{ws}{update}{ws}inventory{ws}{set_word}{ws}name='WHERE DROP TABLE'{ws}{where_word}{ws}sku='APX-0007'"
+                expected = True
+            generated.append((sql, expected, f"seeded direct UPDATE variant {i}"))
+
+        for i in range(100):
+            ws = rng.choice(whitespace)
+            delete = rng.choice(tuple(case_variants("DELETE")))
+            from_word = rng.choice(tuple(case_variants("FROM")))
+            where_word = rng.choice(tuple(case_variants("WHERE")))
+            if i % 2:
+                sql = f"{ws}{delete}{ws}{from_word}{ws}inventory{ws}{where_word}{ws}sku='APX-0007'"
+                expected = True
+            else:
+                sql = f"{ws}{delete}{ws}{from_word}{ws}inventory"
+                expected = False
+            generated.append((sql, expected, f"seeded DELETE variant {i}"))
+
+        for i in range(100):
+            ws = rng.choice(whitespace)
+            cte_update = rng.choice(tuple(case_variants("UPDATE")))
+            set_word = rng.choice(tuple(case_variants("SET")))
+            where_word = rng.choice(tuple(case_variants("WHERE")))
+            if i % 2:
+                sql = f"WITH{ws}recent{ws}AS{ws}(SELECT * FROM inventory WHERE stock > 0){ws}{cte_update}{ws}inventory{ws}{set_word}{ws}stock=0"
+                expected = False
+            else:
+                sql = f"WITH{ws}recent{ws}AS{ws}(SELECT * FROM inventory){ws}{cte_update}{ws}inventory{ws}{set_word}{ws}stock=5{ws}{where_word}{ws}sku='APX-0007'"
+                expected = True
+            generated.append((sql, expected, f"seeded CTE variant {i}"))
+
+        destructive = ("DROP", "TRUNCATE", "ALTER", "ATTACH", "DETACH")
+        for i in range(100):
+            keyword = rng.choice(tuple(case_variants(rng.choice(destructive))))
+            prefix = rng.choice(("", "/* benign */ ", "-- benign\n", "\u2003"))
+            sql = f"{prefix}{keyword} TABLE inventory"
+            generated.append((sql, False, f"seeded destructive variant {i}"))
+
+        malformed = (
+            "SELECT * FROM inventory; UPDATE inventory SET stock=0",
+            "UPDATE inventory SET stock=0; DELETE FROM inventory",
+            "UPDATE inventory SET stock=(SELECT stock FROM inventory WHERE sku='APX-0007')",
+            "UPDATE inventory SET stock=0 WHERE",
+            "WITH recent AS (SELECT * FROM inventory",
+            "DELETE inventory WHERE sku='APX-0007'",
+        )
+        for i in range(50):
+            sql = rng.choice(malformed)
+            generated.append((sql, False, f"seeded malformed/multi-statement variant {i}"))
+
+        for i, (sql, expected, label) in enumerate(generated):
+            with self.subTest(seed=20261122, index=i, label=label, sql=sql):
+                result = guard.analyze(sql, approved=False)
+                self.assertEqual(result["allowed"], expected,
+                                 msg=f"seed=20261122 input={sql!r} got={result!r}")
 
 
 if __name__ == "__main__":

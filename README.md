@@ -19,5 +19,32 @@ Keep the crash within ~2 min of running step 4 or the guardrail snaps the rewind
 - `agent.py` orchestrator + HITL gate. `TT_PACE=0` removes the small pacing delay.
 - `python3 tests/e2e.py` runs the full flow headless.
 
+## Testing and CI
+
+Core tests use only the Python standard library. Optional AI providers are not required for the test suite.
+
+```bash
+# Complete unittest discovery
+TT_PACE=0 python tests/run_ci_suite.py --output test-reports/phase1-local.json
+
+# Guard unit and deterministic fuzz tests
+python -m unittest tests.test_guard tests.test_guard_fuzz -v
+
+# Recovery and second-crash suites
+python -m unittest tests.test_foreign_key_recovery tests.test_phase9_comprehensive tests.test_second_crash_scenario -v
+
+# Headless demo in an isolated temporary copy
+TT_PACE=0 python tests/e2e_isolated.py
+
+# Lightweight benchmark smoke
+python benchmarks/benchmark_recovery.py --datasets 1000 --iterations 1 --output test-reports/phase1-benchmark-smoke.json
+```
+
+The isolation runner copies `app`, `seed`, `timetravel`, `tests`, and `data` into a temporary directory before executing the E2E demo. It does not reset or modify `data/live.db` in the repository.
+
+The fuzz suite uses a fixed seed (`20261122`) and does not execute generated SQL. A failing fuzz case reports the generated input and guard result; rerun it through `tests.test_guard_fuzz` for a reproducible failure.
+
+GitHub Actions runs the same complete suite on Python 3.11 and 3.12, followed by explicit guard testing, isolated E2E, and a 1K-row benchmark smoke. Historical test and benchmark reports include the commit/date context where applicable and must not be rewritten to imply newer verification.
+
 ## Not in here yet
 Intent parsing is regex, not an LLM; AWS (Bedrock/Strands/RDS PITR) is not wired. The tools are plain functions so wrapping them with Strands `@tool` is straightforward.

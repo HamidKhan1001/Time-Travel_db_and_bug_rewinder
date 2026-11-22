@@ -10,6 +10,11 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
 
     steps:
       - name: Checkout repository
@@ -18,16 +23,38 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: ${{ matrix.python-version }}
+          cache: pip
 
-      - name: Run guard unit and fuzz tests
+      - name: Install core dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-core.txt
+
+      - name: Run complete unittest discovery
+        env:
+          TT_PACE: "0"
+        run: python tests/run_ci_suite.py --output "test-reports/ci-${{ matrix.python-version }}.json"
+
+      - name: Run guard unit and fuzz tests explicitly
         env:
           TT_PACE: "0"
         run: python -m unittest tests.test_guard tests.test_guard_fuzz -v
 
-      - name: Run end-to-end demo
+      - name: Run isolated end-to-end demo
         env:
           TT_PACE: "0"
-        run: |
-          python reset.py
-          python tests/e2e.py
+        run: python tests/e2e_isolated.py
+
+      - name: Run benchmark smoke test
+        run: python benchmarks/benchmark_recovery.py --datasets 1000 --iterations 1 --output "${{ runner.temp }}/benchmark-smoke.json"
+
+      - name: Upload test and benchmark reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-reports-${{ matrix.python-version }}
+          path: |
+            test-reports/ci-${{ matrix.python-version }}.json
+            ${{ runner.temp }}/benchmark-smoke.json
+          if-no-files-found: warn
