@@ -5,7 +5,7 @@ The demo server is a Python `ThreadingHTTPServer` listening on `127.0.0.1:8000` 
 ## General behavior
 
 - Successful POST routes return HTTP `200` with a route-specific JSON body.
-- Unknown POST routes return `404 {"error":"unknown route <path>"}`.
+- Unknown POST routes return `404 {"error":"unknown route <path>"}`; unknown sessions return `404 {"error":"session not found"}`; a missing request field returns `400 {"error":"missing field '<name>'"}`.
 - POST request/handler errors return `400 {"error":"<message>"}`.
 - Unknown GET paths return `404 {"error":"not found"}`.
 - Unknown session GET requests return `404 {"error":"session not found"}`; unknown audit history returns `404 {"error":"audit history not found"}`; unknown or historical-empty SSE sessions return `404 {"error":"session or audit history not found"}`.
