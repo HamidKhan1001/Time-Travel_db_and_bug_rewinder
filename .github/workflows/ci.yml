@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run guard unit and fuzz tests
+        env:
+          TT_PACE: "0"
+        run: python -m unittest tests.test_guard tests.test_guard_fuzz -v
+
+      - name: Run end-to-end demo
+        env:
+          TT_PACE: "0"
+        run: |
+          python reset.py
+          python tests/e2e.py
