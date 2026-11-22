@@ -43,6 +43,8 @@ These tables are SQLite records and survive database close/reopen. They do not p
 
 Audit detail fields contain only safe summaries such as counts, risk scores, phase names, file-operation outcomes, and test/check summaries. Passwords and provider credentials are not recorded.
 
+Phase 5 adds an optional `timings` object to preview, recovery, integrity, undo, and failure audit details. Values are monotonic elapsed seconds sourced from `time.perf_counter()`; a stage that did not run is represented by `null`. These values are diagnostic summaries, not a separate audit ledger and not wall-clock timestamps. The same object is exposed as `timings` on the in-memory session JSON described in `API.md`.
+
 ## Recovery lifecycle
 
 1. `POST /api/rewind` creates a `Session` and records `recovery_initiated`.

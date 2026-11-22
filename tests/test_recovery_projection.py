@@ -158,12 +158,24 @@ class RecoveryProjectionTests(unittest.TestCase):
             self.assertIsNotNone(applied["actual_recovery"])
             self.assertEqual(applied["verification"]["status"], "passed")
             self.assertTrue(applied["undo_state"]["available"])
+            for key in ("planning_preview_seconds", "approval_delay_seconds",
+                        "recovery_execution_seconds", "verification_seconds",
+                        "total_workflow_seconds"):
+                self.assertIsInstance(applied["timings"][key], (int, float), key)
+                self.assertGreaterEqual(applied["timings"][key], 0.0, key)
+            self.assertIsNone(applied["timings"]["undo_seconds"])
 
             agent.undo(session.id)
             undone = session.to_json()
             self.assertEqual(session.phase, "undone")
             self.assertTrue(undone["undo_state"]["succeeded"])
             self.assertFalse(undone["undo_state"]["available"])
+            self.assertIsInstance(undone["timings"]["undo_seconds"], (int, float))
+            self.assertGreaterEqual(undone["timings"]["undo_seconds"], 0.0)
+            self.assertEqual(
+                undone["timings"]["total_workflow_seconds"],
+                applied["timings"]["total_workflow_seconds"],
+            )
         finally:
             if session is not None:
                 agent.SESSIONS.pop(session.id, None)

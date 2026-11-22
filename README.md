@@ -43,7 +43,10 @@ node --test tests/js/recovery_ui.test.js
 TT_PACE=0 python tests/e2e_isolated.py
 
 # Lightweight benchmark smoke
-python benchmarks/benchmark_recovery.py --datasets 1000 --iterations 1 --output test-reports/phase1-benchmark-smoke.json
+python benchmarks/benchmark_recovery.py --datasets 1000 --iterations 1 --output test-reports/phase5-benchmark-smoke.json
+
+# Reproducible multi-repetition benchmark with medians
+python benchmarks/benchmark_recovery.py --datasets 1000 10000 --iterations 3 --output test-reports/phase5-benchmark-full.json
 ```
 
 The isolation runner copies `app`, `seed`, `timetravel`, `tests`, and `data` into a temporary directory before executing the E2E demo. It does not reset or modify `data/live.db` in the repository.
@@ -58,6 +61,7 @@ GitHub Actions runs the same complete suite on Python 3.11 and 3.12, followed by
 
 - Complete HTTP API and SSE stream: [`API.md`](API.md)
 - Recovery and audit persistence lifecycle: [`docs/AUDIT.md`](docs/AUDIT.md)
+- Performance evidence and integrity scope: [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md)
 - Database limitations: [`DATABASE_LIMITATIONS.md`](DATABASE_LIMITATIONS.md)
 - AI provider setup: [`docs/ai-setup.md`](docs/ai-setup.md)
 

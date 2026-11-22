@@ -1,0 +1,170 @@
+{
+  "datasets": [
+    {
+      "dataset_rows": 1000,
+      "errors": [],
+      "runs": [
+        {
+          "apply_seconds": 0.09479179999470944,
+          "audit_status": "committed",
+          "checksum_verification_seconds": 0.03371800000604708,
+          "commit_seconds": 0.0054205999986152165,
+          "database_bytes": 1572864,
+          "dataset_rows": 1000,
+          "event_count": 1000,
+          "execute_plan_seconds": 0.43750010000076145,
+          "faulty_transaction_id": 2,
+          "integrity_status": "VERIFIED",
+          "iteration": 1,
+          "peak_rss_mb_end": 0.0,
+          "peak_rss_mb_start": 0.0,
+          "plan_step_count": 1000,
+          "preflight_seconds": 0.2381833999970695,
+          "recovery_duration_seconds": 0.4807354000004125,
+          "recovery_execution_seconds": 0.40378209999471437,
+          "recovery_planning_seconds": 0.014042399998288602,
+          "rows_checked": 1050,
+          "rss_growth_mb": 0.0,
+          "seed": 20261122,
+          "simulation_seconds": 0.06219780000537867,
+          "snapshot_bytes": 507904,
+          "snapshot_seconds": 0.00900319999345811,
+          "transaction_history_seconds": 0.016458699996292125,
+          "unaccounted_seconds": 0.0037310000116121955
+        }
+      ],
+      "summary": {
+        "apply_seconds": {
+          "average": 0.094792,
+          "maximum": 0.094792,
+          "median": 0.094792,
+          "minimum": 0.094792,
+          "sample_count": 1
+        },
+        "checksum_verification_seconds": {
+          "average": 0.033718,
+          "maximum": 0.033718,
+          "median": 0.033718,
+          "minimum": 0.033718,
+          "sample_count": 1
+        },
+        "commit_seconds": {
+          "average": 0.005421,
+          "maximum": 0.005421,
+          "median": 0.005421,
+          "minimum": 0.005421,
+          "sample_count": 1
+        },
+        "execute_plan_seconds": {
+          "average": 0.4375,
+          "maximum": 0.4375,
+          "median": 0.4375,
+          "minimum": 0.4375,
+          "sample_count": 1
+        },
+        "peak_rss_mb_end": {
+          "average": 0.0,
+          "maximum": 0.0,
+          "median": 0.0,
+          "minimum": 0.0,
+          "sample_count": 1
+        },
+        "preflight_seconds": {
+          "average": 0.238183,
+          "maximum": 0.238183,
+          "median": 0.238183,
+          "minimum": 0.238183,
+          "sample_count": 1
+        },
+        "recovery_duration_seconds": {
+          "average": 0.480735,
+          "maximum": 0.480735,
+          "median": 0.480735,
+          "minimum": 0.480735,
+          "sample_count": 1
+        },
+        "recovery_execution_seconds": {
+          "average": 0.403782,
+          "maximum": 0.403782,
+          "median": 0.403782,
+          "minimum": 0.403782,
+          "sample_count": 1
+        },
+        "recovery_planning_seconds": {
+          "average": 0.014042,
+          "maximum": 0.014042,
+          "median": 0.014042,
+          "minimum": 0.014042,
+          "sample_count": 1
+        },
+        "rss_growth_mb": {
+          "average": 0.0,
+          "maximum": 0.0,
+          "median": 0.0,
+          "minimum": 0.0,
+          "sample_count": 1
+        },
+        "simulation_seconds": {
+          "average": 0.062198,
+          "maximum": 0.062198,
+          "median": 0.062198,
+          "minimum": 0.062198,
+          "sample_count": 1
+        },
+        "snapshot_seconds": {
+          "average": 0.009003,
+          "maximum": 0.009003,
+          "median": 0.009003,
+          "minimum": 0.009003,
+          "sample_count": 1
+        },
+        "transaction_history_seconds": {
+          "average": 0.016459,
+          "maximum": 0.016459,
+          "median": 0.016459,
+          "minimum": 0.016459,
+          "sample_count": 1
+        }
+      }
+    }
+  ],
+  "environment": {
+    "captured_at_utc": "2026-11-22T17:41:48+00:00",
+    "cpu_brand": "AMD64 Family 25 Model 80 Stepping 0, AuthenticAMD",
+    "git_commit": "bff18b1",
+    "logical_cpus": 12,
+    "machine": "AMD64",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "python_compiler": "MSC v.1942 64 bit (AMD64)",
+    "python_implementation": "CPython",
+    "python_version": "3.13.1",
+    "resource_module_available": false,
+    "sqlite_version": "3.45.3",
+    "system": "Windows",
+    "third_party_dependencies": {},
+    "total_memory_gb": null
+  },
+  "metadata": {
+    "benchmark_mode": "smoke",
+    "command": "'C:\\Users\\msaad\\AppData\\Local\\Programs\\Python\\Python313\\python.exe' benchmarks/benchmark_recovery.py --datasets 1000 --iterations 1 --output test-reports/phase5-benchmark-smoke.json",
+    "dataset_shape": "N inventory rows plus 10 customers, 20 orders, and 20 order items",
+    "datasets_requested": [
+      1000
+    ],
+    "documented_command": "'C:\\Users\\msaad\\AppData\\Local\\Programs\\Python\\Python313\\python.exe' benchmarks/benchmark_recovery.py --datasets 1000 --iterations 1 --seed 20261122 --output 'C:\\Users\\msaad\\AppData\\Local\\Temp\\opencode\\Time-Travel_db_and_bug_rewinder\\test-reports\\phase5-benchmark-smoke.json'",
+    "faulty_operation": "UPDATE inventory SET stock = 0",
+    "generated_at_utc": "2026-11-22T17:41:48+00:00",
+    "iterations_requested": 1,
+    "memory_source": "resource.getrusage process high-water mark (unavailable on Windows)",
+    "notes": [
+      "Every timing comes from an actual recovery execution; no estimates or delays are used.",
+      "Peak RSS is a process-wide high-water mark and does not decrease between iterations.",
+      "Recovery execution excludes live checksum verification but includes preflight, simulation, apply, and commit.",
+      "Total recovery duration is elapsed monotonic time from snapshot creation through execute_plan.",
+      "Summaries include sample_count; failed iterations are preserved in dataset errors."
+    ],
+    "raw_results_preserved": true,
+    "seed": 20261122,
+    "timing_source": "time.perf_counter"
+  }
+}
