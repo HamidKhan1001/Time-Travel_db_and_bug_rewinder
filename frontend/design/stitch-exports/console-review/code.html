@@ -1,0 +1,582 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<meta content="web_standard" name="shell-type">
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<style>
+    @layer base {
+      html, body { margin: 0; padding: 0; }
+      body { overscroll-behavior: none; }
+      main > :first-child { margin-top: 0 !important; }
+      main > :last-child { margin-bottom: 0 !important; }
+    }
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+  </style>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: "#eef2ff",
+              100: "#e0e7ff",
+              500: "#6366f1",
+              600: "#4f46e5",
+              700: "#4338ca"
+            },
+            slate: {
+              25: "#fcfdfe",
+              50: "#f8fafc",
+              100: "#f1f5f9",
+              200: "#e2e8f0",
+              300: "#cbd5e1",
+              400: "#94a3b8",
+              500: "#64748b",
+              600: "#475569",
+              700: "#334155",
+              800: "#1e293b",
+              900: "#0f172a"
+            },
+            emerald: {
+              50: "#ecfdf5",
+              100: "#d1fae5",
+              500: "#10b981",
+              600: "#059669",
+              700: "#047857"
+            },
+            rose: {
+              50: "#fff1f2",
+              100: "#ffe4e6",
+              500: "#f43f5e",
+              600: "#e11d48"
+            },
+            amber: {
+              50: "#fffbeb",
+              100: "#fef3c7",
+              500: "#f59e0b",
+              600: "#d97706"
+            }
+          },
+          fontFamily: {
+            sans: ["Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "sans-serif"],
+            mono: ["JetBrains Mono", "ui-monospace", "SFMono-Regular", "monospace"]
+          },
+          boxShadow: {
+            card: "0 1px 3px rgba(15, 23, 42, 0.05), 0 1px 2px rgba(15, 23, 42, 0.03)",
+            glow: "0 0 25px -5px rgba(99, 102, 241, 0.2)",
+            subtle: "0 4px 20px -2px rgba(15, 23, 42, 0.04)"
+          }
+        }
+      }
+    };
+  </script>
+</head>
+<body class="bg-[#f8fafc] font-sans text-slate-800 antialiased selection:bg-brand-500 selection:text-white">
+<!-- Top Navigation Header -->
+<header class="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-md border-b border-slate-200/80 transition-all">
+<div class="h-14 w-full px-6 flex items-center justify-between gap-4">
+<div class="flex items-center gap-6">
+<a class="flex items-center gap-2.5 group" data-path="console" href="#">
+<div class="w-7 h-7 bg-gradient-to-tr from-brand-600 to-indigo-500 rounded-md flex items-center justify-center shadow-md shadow-brand-500/25 group-hover:scale-105 transition-transform">
+<span class="material-symbols-outlined text-white text-[16px]">history</span>
+</div>
+<span class="font-bold text-slate-900 tracking-tight font-mono text-[14px]">Time-Travel DB <span class="text-slate-400 font-normal font-sans text-[13px] ml-1">&amp; Bug Rewinder</span></span>
+</a>
+<nav class="flex items-center gap-1.5" data-active-classes="bg-brand-50 text-brand-700 font-semibold border-brand-200">
+<a aria-current="page" class="px-3 py-1.5 rounded-md text-[13px] font-medium bg-brand-50 text-brand-700 border border-brand-200/60 shadow-xs flex items-center gap-1.5 transition-all" data-path="console" href="#">
+<span class="w-1.5 h-1.5 rounded-full bg-brand-600"></span>
+            Console
+          </a>
+<a class="px-3 py-1.5 rounded-md text-[13px] font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 transition-all flex items-center gap-2" data-path="audit-log" href="#">
+            Audit log 
+            <span class="px-1.5 py-0.2 text-[10px] font-bold font-mono rounded-full bg-slate-100 border border-slate-200 text-slate-600">3</span>
+</a>
+</nav>
+</div>
+<div class="flex items-center gap-3">
+<div class="flex items-center gap-2 px-2.5 py-1 rounded-full bg-rose-50/80 border border-rose-200/80 text-[11px] font-mono font-medium shadow-xs">
+<span class="relative flex h-2 w-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+</span>
+<span class="text-rose-700 font-bold tracking-wider">LIVE DB</span>
+</div>
+<div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-50 border border-slate-200 text-[11px] font-medium text-slate-600">
+<span class="material-symbols-outlined text-[14px] text-emerald-600">shield</span>
+<span>Guard on</span>
+</div>
+<button class="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 hover:text-slate-900 text-[12px] font-medium transition-colors shadow-xs">
+<span class="material-symbols-outlined text-[15px] text-slate-400">rotate_left</span>
+<span>Reset demo</span>
+</button>
+<div class="w-8 h-8 rounded-full ring-2 ring-brand-100 bg-gradient-to-tr from-brand-600 to-indigo-500 flex items-center justify-center text-white font-medium shadow-xs cursor-pointer">
+<span class="material-symbols-outlined text-[18px]">person</span>
+</div>
+</div>
+</div>
+</header>
+<!-- Main Content Body -->
+<main class="w-full pt-14 min-h-screen bg-[#f8fafc]">
+<div class="flex flex-col w-full pb-20">
+<!-- Top Clone Banner: Iris / Purple Theme with glowing lock badge -->
+<div class="w-full bg-gradient-to-r from-indigo-50/80 via-purple-50/60 to-brand-50/40 border-b border-indigo-100/90 px-6 py-2.5 flex flex-wrap items-center justify-between gap-3">
+<div class="flex items-center gap-3">
+<div class="w-7 h-7 rounded-lg bg-indigo-500/10 border border-indigo-200/60 flex items-center justify-center text-indigo-600 shadow-xs">
+<span class="material-symbols-outlined text-[18px]">science</span>
+</div>
+<span class="text-[13px] font-medium text-slate-800">
+            Time-travel recovery simulation on isolated clone branch 
+            <span class="inline-flex items-center px-2 py-0.5 ml-1.5 rounded bg-indigo-100/70 text-indigo-700 font-mono text-[12px] font-semibold border border-indigo-200">#cl-9942-alpha</span>
+</span>
+</div>
+<div class="flex items-center gap-2 text-[12px] font-mono bg-white/95 px-3.5 py-1.5 rounded-full border border-indigo-100/80 text-slate-600 shadow-xs">
+<span class="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></span>
+<span class="font-sans text-slate-600">Everything below ran on a clone. <strong class="text-slate-800 font-medium">Nothing written to live.</strong></span>
+</div>
+</div>
+<!-- Compact Progress Stepper (Steps 1-8) -->
+<div class="w-full bg-white border-b border-slate-200/80 px-6 py-3.5 overflow-x-auto">
+<div class="flex items-center justify-between min-w-[880px] gap-2">
+<!-- Step 1 -->
+<div class="flex items-center gap-2 group cursor-default">
+<div class="w-5 h-5 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-700 flex items-center justify-center text-[10px] font-bold shadow-xs">
+<span class="material-symbols-outlined text-[12px]">check</span>
+</div>
+<span class="font-mono text-[11px] font-medium text-slate-700">Snapshot Fork</span>
+</div>
+<div class="flex-1 h-[2px] bg-gradient-to-r from-emerald-300 to-emerald-300"></div>
+<!-- Step 2 -->
+<div class="flex items-center gap-2 group cursor-default">
+<div class="w-5 h-5 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-700 flex items-center justify-center text-[10px] font-bold shadow-xs">
+<span class="material-symbols-outlined text-[12px]">check</span>
+</div>
+<span class="font-mono text-[11px] font-medium text-slate-700">Replay Mutex</span>
+</div>
+<div class="flex-1 h-[2px] bg-gradient-to-r from-emerald-300 to-emerald-300"></div>
+<!-- Step 3 -->
+<div class="flex items-center gap-2 group cursor-default">
+<div class="w-5 h-5 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-700 flex items-center justify-center text-[10px] font-bold shadow-xs">
+<span class="material-symbols-outlined text-[12px]">check</span>
+</div>
+<span class="font-mono text-[11px] font-medium text-slate-700">State Reconstruct</span>
+</div>
+<div class="flex-1 h-[2px] bg-gradient-to-r from-emerald-300 to-emerald-300"></div>
+<!-- Step 4 -->
+<div class="flex items-center gap-2 group cursor-default">
+<div class="w-5 h-5 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-700 flex items-center justify-center text-[10px] font-bold shadow-xs">
+<span class="material-symbols-outlined text-[12px]">check</span>
+</div>
+<span class="font-mono text-[11px] font-medium text-slate-700">Conflict Scan</span>
+</div>
+<div class="flex-1 h-[2px] bg-gradient-to-r from-emerald-300 to-brand-400"></div>
+<!-- Step 5 Active -->
+<div class="flex items-center gap-2 relative">
+<div class="w-5 h-5 rounded-full bg-brand-600 text-white flex items-center justify-center text-[10px] font-bold ring-4 ring-brand-100 shadow-sm animate-pulse">
+              5
+            </div>
+<span class="font-mono text-[11px] font-bold text-brand-700 bg-brand-50 px-2 py-0.5 rounded border border-brand-200">Merge Plan</span>
+</div>
+<div class="flex-1 h-[2px] bg-slate-200"></div>
+<!-- Step 6 -->
+<div class="flex items-center gap-2 text-slate-400">
+<div class="w-5 h-5 rounded-full bg-slate-100 border border-slate-200 text-slate-500 flex items-center justify-center text-[10px] font-mono font-medium">6</div>
+<span class="font-mono text-[11px]">Patch Verify</span>
+</div>
+<div class="flex-1 h-[2px] bg-slate-200"></div>
+<!-- Step 7 -->
+<div class="flex items-center gap-2 text-slate-400">
+<div class="w-5 h-5 rounded-full bg-slate-100 border border-slate-200 text-slate-500 flex items-center justify-center text-[10px] font-mono font-medium">7</div>
+<span class="font-mono text-[11px]">Sandbox Test</span>
+</div>
+<div class="flex-1 h-[2px] bg-slate-200"></div>
+<!-- Step 8 -->
+<div class="flex items-center gap-2 text-slate-400">
+<div class="w-5 h-5 rounded-full bg-slate-100 border border-slate-200 text-slate-500 flex items-center justify-center text-[10px] font-mono font-medium">8</div>
+<span class="font-mono text-[11px]">Promote Live</span>
+</div>
+</div>
+</div>
+<!-- Colorful Elevated Summary Stat Strip -->
+<div class="w-full bg-white border-b border-slate-200/80 px-6 py-3.5">
+<div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3"><!-- Rewind Target -->
+<div class="flex flex-col p-2.5 rounded-lg bg-indigo-50/60 border border-indigo-100/90 text-center transition hover:border-indigo-200">
+  <span class="text-[11px] font-sans font-bold uppercase tracking-wider text-indigo-700">Rewind Target</span>
+  <span class="text-indigo-950 font-extrabold font-mono text-[16px] mt-0.5 tracking-tight">02:14:06.900</span>
+</div>
+<!-- Changes Trailed -->
+<div class="flex flex-col p-2.5 rounded-lg bg-slate-50 border border-slate-200/80 text-center transition hover:border-slate-300">
+  <span class="text-[11px] font-sans font-bold uppercase tracking-wider text-slate-600">Changes Trailed</span>
+  <span class="text-slate-950 font-extrabold font-mono text-[16px] mt-0.5">8 ops</span>
+</div>
+<!-- Kept Mutations -->
+<div class="flex flex-col p-2.5 rounded-lg bg-emerald-50/60 border border-emerald-200 text-center transition hover:border-emerald-300">
+  <span class="text-[11px] font-sans font-bold uppercase tracking-wider text-emerald-800">Kept Mutations</span>
+  <span class="text-emerald-700 font-extrabold font-sans text-[16px] mt-0.5 flex items-center justify-center gap-1">
+    <span class="material-symbols-outlined text-[16px] font-bold">done_all</span> 3 Kept
+  </span>
+</div>
+<!-- Discarded -->
+<div class="flex flex-col p-2.5 rounded-lg bg-rose-50/60 border border-rose-200 text-center transition hover:border-rose-300">
+  <span class="text-[11px] font-sans font-bold uppercase tracking-wider text-rose-800">Discarded</span>
+  <span class="text-rose-700 font-extrabold font-sans text-[16px] mt-0.5 flex items-center justify-center gap-1">
+    <span class="material-symbols-outlined text-[16px] font-bold">remove_done</span> 5 Purged
+  </span>
+</div>
+<!-- Conflicts -->
+<div class="flex flex-col p-2.5 rounded-lg bg-amber-50/60 border border-amber-200 text-center transition hover:border-amber-300">
+  <span class="text-[11px] font-sans font-bold uppercase tracking-wider text-amber-800">Conflicts</span>
+  <span class="text-amber-900 font-extrabold font-sans text-[16px] mt-0.5">1 Resolved</span>
+</div>
+<!-- Risk Meter -->
+<div class="flex flex-col p-2.5 rounded-lg bg-slate-50 border border-slate-200/80 text-center transition hover:border-slate-300">
+  <span class="text-[11px] font-sans font-bold uppercase tracking-wider text-slate-600">Risk Meter</span>
+  <div class="mt-0.5 flex items-center justify-center gap-1.5">
+    <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-900 text-[12px] font-sans font-extrabold">
+      <span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span> 22 Low
+    </span>
+  </div>
+</div>
+<!-- AI Confidence -->
+<div class="flex flex-col p-2.5 rounded-lg bg-purple-50/50 border border-purple-200 text-center transition hover:border-purple-300">
+  <span class="text-[11px] font-sans font-bold uppercase tracking-wider text-purple-800">AI Confidence</span>
+  <div class="mt-0.5 flex items-center justify-center gap-1.5">
+    <span class="material-symbols-outlined text-purple-700 text-[16px] font-bold">auto_awesome</span>
+    <span class="text-purple-950 font-extrabold font-sans text-[16px]">91%</span>
+  </div>
+</div></div>
+</div>
+<!-- Main Split Dashboard Layout -->
+<div class="w-full max-w-[1600px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6 p-6">
+<!-- LEFT PANEL: Live Database State & Feeds (Col 5) -->
+<div class="lg:col-span-5 flex flex-col gap-5">
+<!-- Live DB Header & Scenario Selector -->
+<div class="bg-white border border-slate-200/80 rounded-xl p-4 shadow-card hover:shadow-subtle transition-shadow">
+<div class="flex items-center justify-between pb-3 border-b border-slate-100">
+<div class="flex items-center gap-2.5">
+<span class="relative flex h-2.5 w-2.5">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
+</span>
+<span class="font-semibold text-slate-900 text-[14px]">Live Database Snapshot</span>
+</div>
+<span class="px-2.5 py-0.5 rounded bg-rose-100/80 text-rose-800 font-sans text-[11px] font-extrabold border border-rose-300 tracking-wider shadow-xs">WIPED BY SYNC</span>
+</div>
+<div class="mt-3 flex items-center gap-2 bg-slate-50/80 p-2 rounded-lg border border-slate-200/70 text-[13px] text-slate-600 font-mono">
+<span class="material-symbols-outlined text-[16px] text-brand-600">tune</span>
+<span class="text-slate-500 text-[12px]">Scenario:</span>
+<select class="bg-white text-slate-800 border border-slate-200 px-2.5 py-1 rounded-md font-mono text-[12px] outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 flex-1 shadow-xs cursor-pointer">
+<option>Flash Sale Sync Failure (ID: 9942)</option>
+<option>Inventory Race Condition</option>
+<option>Database Deadlock Recovery</option>
+</select>
+</div>
+</div>
+<!-- Inventory Table (All Stock 0) -->
+<div class="bg-white border border-slate-200/80 rounded-xl p-4 shadow-card hover:shadow-subtle transition-shadow">
+<div class="flex items-center justify-between mb-3">
+<span class="font-semibold text-slate-900 text-[14px] flex items-center gap-2">
+<span class="w-6 h-6 rounded bg-slate-100 text-slate-600 flex items-center justify-center">
+<span class="material-symbols-outlined text-[15px]">inventory_2</span>
+</span>
+                Inventory Table
+              </span>
+<span class="text-[11px] text-rose-700 font-sans font-extrabold bg-rose-100/80 px-2.5 py-0.5 rounded border border-rose-300 shadow-xs">All stock wiped (0 qty)</span>
+</div>
+<div class="overflow-hidden border border-slate-100 rounded-lg">
+<table class="w-full text-left font-mono text-[12px]">
+<thead>
+<tr class="bg-slate-50/90 text-slate-500 border-b border-slate-200/70 text-[11px] font-semibold uppercase tracking-wider">
+<th class="py-2.5 px-3">SKU</th>
+<th class="py-2.5 px-3">Item Name</th>
+<th class="py-2.5 px-3 text-right">Live Qty</th>
+<th class="py-2.5 px-3 text-right">Status</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-slate-100 bg-white">
+<tr class="hover:bg-slate-50/60 transition-colors">
+<td class="py-2.5 px-3 text-slate-400 font-medium">SKU-881</td>
+<td class="py-2.5 px-3 text-slate-800 font-medium font-sans">Limited Drop Hoodie</td>
+<td class="py-2.5 px-3 text-right text-rose-600 font-bold">0</td>
+<td class="py-2.5 px-3 text-right">
+<span class="px-2 py-0.5 rounded bg-rose-50 text-rose-700 text-[10px] font-bold border border-rose-200/70">Zeroed</span>
+</td>
+</tr>
+<tr class="hover:bg-slate-50/60 transition-colors">
+<td class="py-2.5 px-3 text-slate-400 font-medium">SKU-882</td>
+<td class="py-2.5 px-3 text-slate-800 font-medium font-sans">Techwear Cargo Pant</td>
+<td class="py-2.5 px-3 text-right text-rose-600 font-bold">0</td>
+<td class="py-2.5 px-3 text-right">
+<span class="px-2 py-0.5 rounded bg-rose-50 text-rose-700 text-[10px] font-bold border border-rose-200/70">Zeroed</span>
+</td>
+</tr>
+<tr class="hover:bg-slate-50/60 transition-colors">
+<td class="py-2.5 px-3 text-slate-400 font-medium">SKU-883</td>
+<td class="py-2.5 px-3 text-slate-800 font-medium font-sans">Modular Chest Rig</td>
+<td class="py-2.5 px-3 text-right text-rose-600 font-bold">0</td>
+<td class="py-2.5 px-3 text-right">
+<span class="px-2 py-0.5 rounded bg-rose-50 text-rose-700 text-[10px] font-bold border border-rose-200/70">Zeroed</span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Orders Tab (3 orders, #1043 oversold) -->
+<div class="bg-white border border-slate-200/80 rounded-xl p-4 shadow-card hover:shadow-subtle transition-shadow">
+<div class="flex items-center justify-between mb-3">
+<span class="font-semibold text-slate-900 text-[14px] flex items-center gap-2">
+<span class="w-6 h-6 rounded bg-slate-100 text-slate-600 flex items-center justify-center">
+<span class="material-symbols-outlined text-[15px]">receipt_long</span>
+</span>
+                Active Orders Feed
+              </span>
+<div class="flex items-center gap-1 bg-slate-100/80 p-0.5 rounded-lg border border-slate-200 text-[11px] font-mono">
+<span class="px-2 py-0.5 rounded-md bg-white text-slate-800 font-semibold shadow-xs">All (3)</span>
+<span class="px-2 py-0.5 text-slate-500 font-medium">Oversold (1)</span>
+</div>
+</div>
+<div class="flex flex-col gap-2 font-mono">
+<!-- Order 1 -->
+<div class="p-3 rounded-lg bg-slate-50/50 border border-slate-200/70 flex items-center justify-between shadow-xs hover:border-slate-300 transition-colors">
+<div class="flex items-center gap-3">
+<span class="text-brand-600 font-bold text-[13px]">#1041</span>
+<div>
+<div class="text-slate-800 text-[12px] font-sans font-medium">Limited Drop Hoodie <span class="text-slate-400 font-mono text-[11px]">(x1)</span></div>
+<div class="text-slate-400 text-[11px]">User: alex_dev @ 02:14:02</div>
+</div>
+</div>
+<span class="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[11px] font-bold border border-emerald-200">Fulfilled</span>
+</div>
+<!-- Order 2 -->
+<div class="p-3 rounded-lg bg-slate-50/50 border border-slate-200/70 flex items-center justify-between shadow-xs hover:border-slate-300 transition-colors">
+<div class="flex items-center gap-3">
+<span class="text-brand-600 font-bold text-[13px]">#1042</span>
+<div>
+<div class="text-slate-800 text-[12px] font-sans font-medium">Techwear Cargo Pant <span class="text-slate-400 font-mono text-[11px]">(x2)</span></div>
+<div class="text-slate-400 text-[11px]">User: sarah_q @ 02:14:04</div>
+</div>
+</div>
+<span class="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[11px] font-bold border border-emerald-200">Fulfilled</span>
+</div>
+<!-- Order 3 (Oversold) -->
+<div class="p-3 rounded-lg bg-rose-50/60 border border-rose-200/90 flex items-center justify-between shadow-xs ring-1 ring-rose-200/50"><div class="flex items-center gap-3">
+  <span class="text-rose-700 font-extrabold font-mono text-[14px]">#1043</span>
+  <div>
+    <div class="text-slate-900 text-[13px] font-sans font-bold">Limited Drop Hoodie <span class="text-rose-600 font-mono text-[11px] font-semibold">(x3)</span></div>
+    <div class="text-rose-700 text-[11px] font-sans font-bold flex items-center gap-1 tracking-tight">
+      <span class="material-symbols-outlined text-[14px] font-bold">error</span>
+      OVERSOLD: Stock was 0 at checkout
+    </div>
+  </div>
+</div>
+<span class="px-3 py-1 rounded-md bg-rose-600 text-white text-[11px] font-sans font-extrabold shadow-sm flex items-center gap-1.5 uppercase tracking-wide">
+  <span class="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>
+  Conflict
+</span></div>
+</div>
+</div>
+<!-- Change Log Feed -->
+<div class="bg-white border border-slate-200/80 rounded-xl p-4 shadow-card hover:shadow-subtle transition-shadow">
+<span class="font-semibold text-slate-900 text-[14px] flex items-center gap-2 mb-3">
+<span class="w-6 h-6 rounded bg-slate-100 text-slate-600 flex items-center justify-center">
+<span class="material-symbols-outlined text-[15px]">history</span>
+</span>
+              Change Log Feed
+            </span>
+<div class="flex flex-col gap-2 font-mono text-[12px] max-h-48 overflow-y-auto pr-1">
+<div class="text-slate-600 flex items-center justify-between p-2 rounded bg-slate-50 border border-slate-100">
+<span class="text-slate-700">[02:14:06.900] SYNC_WIPE_ALL</span>
+<span class="text-rose-600 font-bold bg-rose-50 px-1.5 py-0.5 rounded text-[10px] border border-rose-200">DB_ZERO</span>
+</div>
+<div class="text-slate-600 flex items-center justify-between p-2 rounded bg-slate-50 border border-slate-100">
+<span class="text-slate-700">[02:14:05.102] ORDER_CREATE #1043</span>
+<span class="text-amber-700 font-bold bg-amber-50 px-1.5 py-0.5 rounded text-[10px] border border-amber-200">OVERSOLD</span>
+</div>
+<div class="text-slate-600 flex items-center justify-between p-2 rounded bg-slate-50 border border-slate-100">
+<span class="text-slate-700">[02:14:04.020] ORDER_CREATE #1042</span>
+<span class="text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded text-[10px] border border-emerald-200">SUCCESS</span>
+</div>
+<div class="text-slate-600 flex items-center justify-between p-2 rounded bg-slate-50 border border-slate-100">
+<span class="text-slate-700">[02:14:02.114] ORDER_CREATE #1041</span>
+<span class="text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded text-[10px] border border-emerald-200">SUCCESS</span>
+</div>
+</div>
+</div>
+</div>
+<!-- RIGHT PANEL: Time-Travel Recovery & Merge Plan (Col 7) -->
+<div class="lg:col-span-7 flex flex-col gap-5">
+<!-- Merge Plan Table with Op/Decision Badges & Plain-Language Reasons -->
+<div class="bg-white border border-slate-200/80 rounded-xl p-5 shadow-card hover:shadow-subtle transition-shadow">
+<div class="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-100">
+<div>
+<span class="text-[16px] font-bold text-slate-900 tracking-tight flex items-center gap-2">
+<span class="material-symbols-outlined text-brand-600 text-[20px]">alt_route</span>
+                  Merge Plan &amp; Operation Decisions
+                </span>
+<p class="text-slate-500 text-[13px] mt-0.5">Automated resolution path calculated on isolated clone branch</p>
+</div>
+<div class="flex items-center gap-2">
+<span class="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 font-mono text-[11px] font-bold border border-emerald-200 flex items-center gap-1 shadow-xs">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> 3 Kept
+                </span>
+<span class="px-2.5 py-1 rounded-full bg-rose-50 text-rose-700 font-mono text-[11px] font-bold border border-rose-200 flex items-center gap-1 shadow-xs">
+<span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> 5 Discarded
+                </span>
+</div>
+</div>
+<div class="overflow-x-auto mt-2">
+<table class="w-full text-left font-mono text-[12px]"><thead>
+  <tr class="text-slate-500 border-b border-slate-200/70 text-[11px] font-sans font-bold uppercase tracking-wider">
+    <th class="py-3 px-3">Operation</th>
+    <th class="py-3 px-3">Target Entity</th>
+    <th class="py-3 px-3">Decision</th>
+    <th class="py-3 px-3">Plain-Language Reason</th>
+  </tr>
+</thead>
+<tbody class="divide-y divide-slate-100 text-[12px]">
+  <tr class="hover:bg-slate-50/70 transition-colors">
+    <td class="py-3 px-3 text-slate-900 font-mono font-bold text-[13px]">REWIND_STATE</td>
+    <td class="py-3 px-3 text-indigo-800 font-mono font-semibold">
+      <span class="bg-indigo-50/80 px-2 py-0.5 rounded border border-indigo-200/70">db.inventory</span>
+    </td>
+    <td class="py-3 px-3">
+      <span class="px-2.5 py-1 rounded-md bg-emerald-100 text-emerald-900 text-[11px] font-sans font-extrabold border border-emerald-300 shadow-xs tracking-wide">KEPT</span>
+    </td>
+    <td class="py-3 px-3 text-slate-700 font-sans leading-relaxed">
+      <strong class="text-slate-900 font-bold">Restores inventory</strong> counts prior to the erroneous sync wipe event.
+    </td>
+  </tr>
+  <tr class="hover:bg-slate-50/70 transition-colors">
+    <td class="py-3 px-3 text-slate-900 font-mono font-bold text-[13px]">REPLAY_ORDER</td>
+    <td class="py-3 px-3 text-indigo-800 font-mono font-semibold">
+      <span class="bg-indigo-50/80 px-2 py-0.5 rounded border border-indigo-200/70">order #1041</span>
+    </td>
+    <td class="py-3 px-3">
+      <span class="px-2.5 py-1 rounded-md bg-emerald-100 text-emerald-900 text-[11px] font-sans font-extrabold border border-emerald-300 shadow-xs tracking-wide">KEPT</span>
+    </td>
+    <td class="py-3 px-3 text-slate-700 font-sans leading-relaxed">
+      <strong class="text-slate-900 font-bold">Valid transaction</strong> executed successfully with <strong class="text-emerald-700 font-bold">sufficient stock</strong>.
+    </td>
+  </tr>
+  <tr class="hover:bg-slate-50/70 transition-colors">
+    <td class="py-3 px-3 text-slate-900 font-mono font-bold text-[13px]">REPLAY_ORDER</td>
+    <td class="py-3 px-3 text-indigo-800 font-mono font-semibold">
+      <span class="bg-indigo-50/80 px-2 py-0.5 rounded border border-indigo-200/70">order #1042</span>
+    </td>
+    <td class="py-3 px-3">
+      <span class="px-2.5 py-1 rounded-md bg-emerald-100 text-emerald-900 text-[11px] font-sans font-extrabold border border-emerald-300 shadow-xs tracking-wide">KEPT</span>
+    </td>
+    <td class="py-3 px-3 text-slate-700 font-sans leading-relaxed">
+      <strong class="text-slate-900 font-bold">Valid transaction</strong> executed successfully with <strong class="text-emerald-700 font-bold">sufficient stock</strong>.
+    </td>
+  </tr>
+  <tr class="hover:bg-amber-50/40 transition-colors bg-amber-50/30">
+    <td class="py-3 px-3 text-slate-900 font-mono font-bold text-[13px]">REPLAY_ORDER</td>
+    <td class="py-3 px-3 text-indigo-800 font-mono font-semibold">
+      <span class="bg-indigo-50/80 px-2 py-0.5 rounded border border-indigo-200/70">order #1043</span>
+    </td>
+    <td class="py-3 px-3">
+      <span class="px-2.5 py-1 rounded-md bg-amber-100 text-amber-900 text-[11px] font-sans font-extrabold border border-amber-300 shadow-xs tracking-wide">RESOLVED</span>
+    </td>
+    <td class="py-3 px-3 text-slate-800 font-sans leading-relaxed">
+      <strong class="text-amber-800 font-bold">Oversold items adjusted</strong>; <strong class="text-slate-900 font-bold">partial fulfillment</strong> queued for customer.
+    </td>
+  </tr>
+  <tr class="hover:bg-slate-50/70 transition-colors">
+    <td class="py-3 px-3 text-slate-900 font-mono font-bold text-[13px]">SYNC_WIPE</td>
+    <td class="py-3 px-3 text-indigo-800 font-mono font-semibold">
+      <span class="bg-indigo-50/80 px-2 py-0.5 rounded border border-indigo-200/70">db.inventory</span>
+    </td>
+    <td class="py-3 px-3">
+      <span class="px-2.5 py-1 rounded-md bg-rose-100 text-rose-900 text-[11px] font-sans font-extrabold border border-rose-300 shadow-xs tracking-wide">DISCARDED</span>
+    </td>
+    <td class="py-3 px-3 text-slate-700 font-sans leading-relaxed">
+      Identified as <strong class="text-rose-700 font-bold">corrupt sync command</strong>; <strong class="text-slate-900 font-bold">completely purged</strong> from timeline.
+    </td>
+  </tr>
+</tbody></table>
+</div>
+</div>
+<!-- Conflict Card for Limited Drop Hoodie -->
+<div class="bg-gradient-to-br from-white to-amber-50/30 border border-amber-200/90 rounded-xl p-5 shadow-card hover:shadow-subtle transition-all border-l-4 border-l-amber-500"><div class="flex items-center justify-between pb-3 border-b border-amber-100">
+  <div class="flex items-center gap-3">
+    <div class="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-200 flex items-center justify-center text-amber-700 shadow-xs">
+      <span class="material-symbols-outlined text-[20px] font-bold">warning</span>
+    </div>
+    <div>
+      <span class="font-extrabold text-slate-900 text-[15px] font-sans">Conflict Resolution: Limited Drop Hoodie</span>
+      <p class="text-slate-600 text-[12px] font-sans mt-0.5">SKU-881 stock exhaustion during concurrent order <strong class="font-mono font-bold text-slate-800">#1043</strong></p>
+    </div>
+  </div>
+  <span class="px-3 py-1 rounded-full bg-amber-100 text-amber-900 font-sans text-[11px] font-extrabold border border-amber-300 shadow-xs uppercase tracking-wide">1 Conflict Resolved</span>
+</div>
+<div class="bg-white/95 p-3.5 rounded-lg border border-amber-200/70 font-sans text-[13px] flex flex-col gap-2.5 text-slate-700 mt-3 shadow-xs">
+  <div class="flex justify-between items-center border-b border-slate-100 pb-2">
+    <span class="text-slate-600 font-sans">Requested Qty: <strong class="text-slate-900 font-mono font-bold text-[14px]">3 units</strong></span>
+    <span class="text-slate-600 font-sans">Available Post-Rewind: <strong class="text-emerald-800 font-mono font-bold bg-emerald-100 px-2.5 py-0.5 rounded border border-emerald-300 text-[13px]">2 units</strong></span>
+  </div>
+  <div class="text-[13px] text-slate-700 pt-0.5 font-sans leading-relaxed">
+    <span class="text-brand-700 font-extrabold font-sans text-[11px] uppercase tracking-wide mr-1.5 bg-brand-50 px-2 py-0.5 rounded border border-brand-200">Auto-Resolution Strategy:</span> <strong class="text-slate-900 font-bold">Split order</strong> into <strong class="text-emerald-700 font-bold">2 fulfilled units</strong> and <strong class="text-amber-800 font-bold">1 backordered unit</strong> with automated customer notification dispatch.
+  </div>
+</div></div>
+<!-- Patch Diff Card for app/handlers.py with Unified Diff and Clone Verification Success -->
+<div class="bg-white border border-slate-200/80 rounded-xl p-5 shadow-card hover:shadow-subtle transition-shadow">
+<div class="flex items-center justify-between pb-3 border-b border-slate-100">
+<div class="flex items-center gap-2.5">
+<div class="w-7 h-7 rounded-md bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-700">
+<span class="material-symbols-outlined text-[16px]">code</span>
+</div>
+<span class="font-bold text-slate-900 font-mono text-[13px]">Patch Diff: app/handlers.py</span>
+</div>
+<div class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-900 font-sans text-[11px] font-extrabold border border-emerald-300 shadow-xs uppercase tracking-wide">
+  <span class="material-symbols-outlined text-[15px] font-bold">check_circle</span>
+  <span>Clone Verification Success</span>
+</div>
+</div>
+<!-- Unified Diff Viewer -->
+<div class="mt-3 bg-slate-900 text-slate-200 border border-slate-800 rounded-lg p-3.5 font-mono text-[12px] overflow-x-auto leading-relaxed shadow-inner">
+<div class="text-slate-500 mb-1 select-none">--- a/app/handlers.py</div>
+<div class="text-slate-500 mb-2 select-none">+++ b/app/handlers.py</div>
+<div class="text-indigo-400 bg-slate-800/80 px-2 py-0.5 rounded text-[11px] inline-block mb-1 select-none">@@ -42,7 +42,7 @@</div>
+<div class="text-slate-400 px-2 py-0.5"> def handle_checkout(session, cart):</div>
+<div class="text-rose-300 bg-rose-950/60 border-l-2 border-rose-500 px-2 py-0.5 font-medium">-    inventory.zero_stock_all()</div>
+<div class="text-emerald-300 bg-emerald-950/60 border-l-2 border-emerald-500 px-2 py-0.5 font-medium">+    inventory.atomic_decrement_safe(cart.items)</div>
+<div class="text-slate-400 px-2 py-0.5">     if cart.has_oversold():</div>
+<div class="text-emerald-300 bg-emerald-950/60 border-l-2 border-emerald-500 px-2 py-0.5 font-medium">+        trigger_backorder_queue(cart.user_id)</div>
+<div class="text-slate-400 px-2 py-0.5">         log.warn("Oversold condition isolated &amp; mitigated")</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Sticky Action Bar at Bottom: Linear / Stripe style -->
+<div class="fixed bottom-0 left-0 w-full bg-white/90 backdrop-blur-xl border-t border-slate-200/90 px-6 py-3.5 z-40 flex items-center justify-between shadow-2xl">
+<div class="flex items-center gap-3 font-sans text-[13px] text-slate-600">
+<span class="relative flex h-2.5 w-2.5">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+</span>
+<span>Clone simulation verified across <strong class="text-slate-900 font-mono">8 test suites</strong>. Ready to promote.</span>
+</div>
+<div class="flex items-center gap-3">
+<button class="px-4 py-2 rounded-lg border border-slate-200/90 hover:bg-slate-100/80 text-slate-700 text-[13px] font-medium font-sans transition-colors shadow-xs bg-white">
+            Discard plan
+          </button>
+<button class="px-6 py-2.5 rounded-lg bg-gradient-to-r from-brand-600 via-indigo-600 to-brand-700 hover:from-brand-500 hover:to-brand-600 text-white text-[14px] font-extrabold font-sans transition-all flex items-center gap-2 shadow-md shadow-brand-500/25 hover:shadow-lg hover:shadow-brand-500/30 active:scale-[0.98] tracking-wide">
+  <span class="material-symbols-outlined text-[18px] font-bold">bolt</span>
+  Approve &amp; go live
+</button>
+</div>
+</div>
+</div>
+</main>
+
+
+</body></html>
