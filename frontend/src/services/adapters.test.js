@@ -71,6 +71,11 @@ test('stepsFromSession maps phases to the 7 UI steps', () => {
   assert.match(done[0].log, /1,?434/)
 })
 
+test('stepsFromSession does not report an errored session as fully done', () => {
+  const steps = stepsFromSession({ phase: 'error', events: [], parsed: {} })
+  assert.ok(steps.every((s) => s.status === 'pending'))
+})
+
 test('sessionError returns the last error event without the boilerplate prefix', () => {
   const e = sessionError({ events: [{ level: 'error', msg: 'Aborted safely, production untouched: Could not find a rewind point in the request' }] })
   assert.equal(e.code, 'INTENT_UNPARSEABLE')
@@ -79,7 +84,7 @@ test('sessionError returns the last error event without the boilerplate prefix',
 
 test('toSnapshot flags the crash, hides old orders, and stops reporting an incident once patched', () => {
   const state = {
-    inventory: { sample: [{ sku: 'APX-0007', name: 'Alpine Water Bottle', stock: 0 }, { sku: 'APX-0777', name: 'Limited Edition Trail Pack', stock: 0 }] },
+    inventory: { skus: 1420, zero: 1420, sample: [{ sku: 'APX-0007', name: 'Alpine Water Bottle', stock: 0 }, { sku: 'APX-0777', name: 'Limited Edition Trail Pack', stock: 0 }] },
     orders: [
       { id: 1040, customer_id: 1, status: 'paid', created_at: 900, items: [{ sku: 'APX-0001', name: 'x', qty: 1 }] },
       { id: 1041, customer_id: 1, customer: 'Ava', status: 'paid', created_at: 1150, items: [{ sku: 'APX-0042', name: 'Jacket', qty: 1 }, { sku: 'APX-0100', name: 'Pack', qty: 2 }] },
@@ -94,6 +99,8 @@ test('toSnapshot flags the crash, hides old orders, and stops reporting an incid
   assert.deepEqual(snap.orders.map((o) => o.id), ['#1041'])
   assert.equal(snap.orders[0].qty, 3)
   assert.equal(snap.changeLog[0].kind === 'ok' || snap.changeLog[0].kind === 'crash', true)
+  const restoredNoPatch = toSnapshot({ ...state, inventory: { ...state.inventory, zero: 1 } }, {})
+  assert.equal(restoredNoPatch.incident, null)     // data restored by a rewind-only recovery
   const fixed = toSnapshot({ ...state, patched: true }, { recovery: { id: 'INC-1' }, prevStocks: { 'APX-0007': 0 } })
   assert.equal(fixed.incident, null)
 })

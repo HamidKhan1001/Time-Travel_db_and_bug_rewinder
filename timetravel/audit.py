@@ -143,6 +143,10 @@ def summarize_recoveries(conn: sqlite3.Connection) -> list:
             }
             if detail.get("risk_score") is not None:
                 entry["risk"] = detail["risk_score"] / 100
+        # A failed apply happens after the preview and leaves the plan awaiting approval (retry or discard),
+        # so it is only terminal when the pipeline itself failed before a plan existed.
+        if kind == "recovery_failed" and entry["delta"] is not None:
+            continue
         if kind in _TERMINAL:
             entry["status"] = _TERMINAL[kind]
             if kind == "recovery_completed":
