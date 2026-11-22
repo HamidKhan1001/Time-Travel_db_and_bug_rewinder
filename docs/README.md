@@ -18,3 +18,5 @@
 
 **History** (describe earlier states of the repo; may be out of date)
 - [Database architecture analysis](DATABASE_ARCHITECTURE_ANALYSIS.md), [devlog](devlog.md), [product requirements](PRD.pdf)
+
+<!-- hamid_bot approval test: safe to delete -->
