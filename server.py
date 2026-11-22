@@ -1,15 +1,21 @@
 """Apex Gear + Time-Travel Mission Control. Run: python3 server.py  ->  http://localhost:8000"""
+import hmac
 import json
+import logging
 import os
 import re
 import select
 import socket
 import threading
 import time
+import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlsplit
 
-from timetravel import agent, appcode, audit, db, seed, sse, tools
+from timetravel import __version__, agent, appcode, audit, db, seed, sse, tools
+
+log = logging.getLogger("timetravel.http")
+STARTED_AT = time.time()
 
 WARM = {"ms": None, "at": None}
 SHOW = ["APX-0007", "APX-0042", "APX-0100", "APX-0555", "APX-0777"]
@@ -20,6 +26,36 @@ MIME = {".html": "text/html; charset=utf-8", ".js": "application/javascript; cha
 # place_order() already contains "WHERE sku = ?", so only the scoped sync_stock statement proves the bug is fixed.
 PATCHED_MARK = "UPDATE inventory SET stock = ? WHERE sku = ?"
 LOCAL_ORIGIN = re.compile(r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$")
+
+
+def api_token():
+    """Optional shared secret. Unset means open (fine for localhost demos); set it before exposing the port."""
+    return os.getenv("TT_API_TOKEN", "")
+
+
+def authorized(headers):
+    token = api_token()
+    if not token:
+        return True
+    supplied = headers.get("Authorization", "")
+    return supplied.startswith("Bearer ") and hmac.compare_digest(supplied[7:], token)
+
+
+def health():
+    """Liveness plus a cheap DB check. Never requires auth so load balancers and Docker can call it."""
+    try:
+        with db.LOCK:
+            conn = db.connect()
+            try:
+                conn.execute("SELECT 1").fetchone()
+            finally:
+                conn.close()
+        database = "ok"
+    except Exception as error:   # report, do not crash the probe
+        database = f"error: {error}"
+    return {"status": "ok" if database == "ok" else "degraded", "version": __version__,
+            "uptime_seconds": round(time.time() - STARTED_AT, 1), "database": database,
+            "llm_provider": os.getenv("TT_LLM_PROVIDER", "gemini"), "auth": "token" if api_token() else "open"}
 
 
 def warm_loop():
@@ -61,6 +97,10 @@ def api_state():
             "warm": {**WARM, "events": evts}}
 
 
+class NotFound(KeyError):
+    """An unknown route or session (404). A plain KeyError from a handler means a missing request field (400)."""
+
+
 def post(path, body):
     if path == "/api/orders":
         with db.LOCK:
@@ -84,13 +124,13 @@ def post(path, body):
         return {"orders": seed.demo_orders()}
     if path == "/api/rewind":
         return {"id": agent.start(body.get("prompt", "")).id}
-    if path.startswith("/api/session/") and path.endswith("/approve"):
-        return agent.approve(path.split("/")[3]).to_json()
-    if path.startswith("/api/session/") and path.endswith("/discard"):
-        return agent.discard(path.split("/")[3]).to_json()
-    if path.startswith("/api/session/") and path.endswith("/undo"):
-        return agent.undo(path.split("/")[3]).to_json()
-    raise KeyError(path)
+    for action in ("approve", "discard", "undo"):
+        if path.startswith("/api/session/") and path.endswith("/" + action):
+            sid = path.split("/")[3]
+            if sid not in agent.SESSIONS:
+                raise NotFound("session not found")
+            return getattr(agent, action)(sid).to_json()
+    raise NotFound(f"unknown route {path}")
 
 
 class H(BaseHTTPRequestHandler):
@@ -101,7 +141,12 @@ class H(BaseHTTPRequestHandler):
             pass
 
     def log_message(self, *a):
-        pass
+        pass                              # replaced by the structured access log in _send()
+
+    def _begin(self):
+        self._t0 = time.perf_counter()
+        incoming = self.headers.get("X-Request-Id", "")
+        self._rid = incoming if re.fullmatch(r"[A-Za-z0-9._-]{1,64}", incoming) else uuid.uuid4().hex[:12]
 
     def _client_closed(self):
         try:
@@ -119,16 +164,31 @@ class H(BaseHTTPRequestHandler):
             self.send_header("Access-Control-Allow-Origin", origin)
             self.send_header("Vary", "Origin")
             self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-            self.send_header("Access-Control-Allow-Headers", "Content-Type, Last-Event-ID")
+            self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization, Last-Event-ID, X-Request-Id")
+            self.send_header("Access-Control-Expose-Headers", "X-Request-Id")
 
     def _send(self, code, body, ctype="application/json"):
         data = body if isinstance(body, bytes) else json.dumps(body).encode()
         self.send_response(code)
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(data)))
+        rid = getattr(self, "_rid", None)
+        if rid:
+            self.send_header("X-Request-Id", rid)
         self._cors()
         self.end_headers()
         self.wfile.write(data)
+        if rid:
+            ms = (time.perf_counter() - self._t0) * 1000
+            log.info("request_id=%s method=%s path=%s status=%s ms=%.1f", rid, self.command, urlsplit(self.path).path, code, ms)
+
+    def _deny_unless_authorized(self):
+        """401 for /api/* when TT_API_TOKEN is set (health is always open). Returns True if the request was rejected."""
+        path = urlsplit(self.path).path
+        if path.startswith("/api/") and path != "/api/health" and not authorized(self.headers):
+            self._send(401, {"error": "missing or invalid bearer token"})
+            return True
+        return False
 
     def do_OPTIONS(self):
         self.send_response(204)
@@ -179,7 +239,12 @@ class H(BaseHTTPRequestHandler):
         return self._send(404, {"error": "recovery not found"})
 
     def do_GET(self):
+        self._begin()
         try:
+            if self._deny_unless_authorized():
+                return
+            if self.path == "/api/health":
+                return self._send(200, health())
             if self.path in ("/", "/index.html"):          # the React app is the only UI
                 self.send_response(302)
                 self.send_header("Location", "/app/")
@@ -255,24 +320,38 @@ class H(BaseHTTPRequestHandler):
             self._send(500, {"error": str(e)})
 
     def do_POST(self):
+        self._begin()
         try:
+            if self._deny_unless_authorized():
+                return
             origin = self.headers.get("Origin")
             if origin and not LOCAL_ORIGIN.match(origin):      # a web page on another site must not drive this API
                 return self._send(403, {"error": "cross-origin requests are not allowed"})
             n = int(self.headers.get("Content-Length") or 0)
             body = json.loads(self.rfile.read(n) or b"{}")
             self._send(200, post(self.path, body))
+        except NotFound as e:
+            self._send(404, {"error": e.args[0]})
         except KeyError as e:
-            self._send(404, {"error": f"unknown route {e}"})
+            self._send(400, {"error": f"missing field {e}"})
         except Exception as e:
             self._send(400, {"error": str(e)})
 
 
-if __name__ == "__main__":
+def main():
+    logging.basicConfig(level=os.getenv("TT_LOG_LEVEL", "INFO").upper(),
+                        format="%(asctime)s %(levelname)s %(name)s %(message)s")
     if not os.path.exists(db.LIVE):
         seed.reset()
     appcode.reload()
     threading.Thread(target=warm_loop, daemon=True).start()
+    host = os.getenv("HOST", "127.0.0.1")        # keep loopback unless you set a token and put it behind TLS
     port = int(os.getenv("PORT", "8000"))
-    print(f"Mission Control on http://localhost:{port}")
-    ThreadingHTTPServer(("127.0.0.1", port), H).serve_forever()
+    if host not in ("127.0.0.1", "localhost", "::1") and not api_token():
+        log.warning("listening on %s with no TT_API_TOKEN set: anyone who can reach the port can reset or rewrite the DB", host)
+    print(f"Mission Control on http://{host}:{port}")
+    ThreadingHTTPServer((host, port), H).serve_forever()
+
+
+if __name__ == "__main__":
+    main()
