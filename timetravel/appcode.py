@@ -4,7 +4,7 @@ from .db import BASE
 
 HANDLERS_PATH = os.path.join(BASE, "app", "handlers.py")
 PRISTINE_PATH = os.path.join(BASE, "seed", "handlers_buggy.py.txt")
-_ns = {}
+_ns: dict = {}
 
 
 def read_source(path=HANDLERS_PATH):

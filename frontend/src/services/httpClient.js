@@ -5,13 +5,23 @@ import { ApiError } from './errors.js'
  * Small fetch wrapper for when the backend is connected.
  * Usage: request('/your/path', { method: 'POST', body: {...} })
  */
+/** If the server runs with TT_API_TOKEN, set it once in the browser: localStorage.setItem('tt_api_token', '<token>'). */
+function authHeader() {
+  try {
+    const token = globalThis.localStorage?.getItem('tt_api_token')
+    return token ? { Authorization: `Bearer ${token}` } : {}
+  } catch {
+    return {}
+  }
+}
+
 export async function request(path, { method = 'GET', body, signal, headers } = {}) {
   let response
   try {
     response = await fetch(`${API_BASE_URL}${path}`, {
       method,
       signal,
-      headers: { Accept: 'application/json', ...(body ? { 'Content-Type': 'application/json' } : {}), ...headers },
+      headers: { Accept: 'application/json', ...(body ? { 'Content-Type': 'application/json' } : {}), ...authHeader(), ...headers },
       body: body ? JSON.stringify(body) : undefined,
     })
   } catch (error) {

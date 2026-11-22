@@ -1,5 +1,5 @@
 # Devlog — Time-Travel DB & Bug Rewinder
-> Historical planning and phase notes. Several entries describe earlier project states and are superseded by [`README.md`](../README.md), [`API.md`](../API.md), [`PERFORMANCE.md`](PERFORMANCE.md), [`AUDIT.md`](AUDIT.md), and [`DATABASE_LIMITATIONS.md`](../DATABASE_LIMITATIONS.md). Do not read the gap lists below as current status.
+> Historical planning and phase notes. Several entries describe earlier project states and are superseded by [`README.md`](../README.md), [`API.md`](../API.md), [`PERFORMANCE.md`](PERFORMANCE.md), [`AUDIT.md`](AUDIT.md), and [`DATABASE_LIMITATIONS.md`](DATABASE_LIMITATIONS.md). Do not read the gap lists below as current status.
 >
 > Last updated: 2026-11-22 · Submission deadline: 2026-12-12
 

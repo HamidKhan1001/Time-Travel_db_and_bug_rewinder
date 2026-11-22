@@ -1,0 +1,17 @@
+.git
+.github
+.coverage
+**/__pycache__
+**/*.pyc
+data/*
+!data/.gitkeep
+docs
+evals
+tests
+benchmarks
+scripts
+frontend/node_modules
+frontend/dist
+frontend/test-results
+frontend/playwright-report
+frontend/design

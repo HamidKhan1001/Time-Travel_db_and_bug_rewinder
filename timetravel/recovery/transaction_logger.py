@@ -10,7 +10,7 @@ SUPPORTED_OPERATIONS = ("I", "U", "D")
 _WRITE_KEYWORDS = ("INSERT", "UPDATE", "DELETE", "REPLACE")
 
 _lock = threading.RLock()
-_states = {}
+_states: dict = {}
 
 
 class _ConnectionState:

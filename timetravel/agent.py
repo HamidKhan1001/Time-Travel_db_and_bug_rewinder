@@ -1,6 +1,5 @@
 """Orchestrator: parses the request, drives the tools, streams events, enforces the HITL gate."""
 import os
-import re
 import threading
 import time
 import uuid
@@ -8,7 +7,7 @@ import uuid
 from . import audit, db, llm, recovery_projection, tools
 
 PACE = float(os.getenv("TT_PACE", "0.4"))     # tiny pause between steps so the feed is readable on stage
-SESSIONS = {}
+SESSIONS: dict[str, "Session"] = {}
 _monotonic = time.perf_counter
 
 
@@ -289,12 +288,13 @@ def approve(sid):
 def discard(sid):
     """Reject a plan that is waiting for approval. Production is never touched."""
     s = SESSIONS[sid]
-    if s.phase != "awaiting_approval":
-        _record_audit(s, "approval_rejected", "rejected", {"current_phase": s.phase})
-        raise ValueError(f"Session is '{s.phase}', not awaiting approval.")
-    s.phase = "discarded"
-    s._workflow_finished = _monotonic()
-    _record_audit(s, "recovery_discarded", "rejected", {"timings": s.timing_report()})
+    with db.LOCK:                      # check + transition atomically so a double click cannot discard twice
+        if s.phase != "awaiting_approval":
+            _record_audit(s, "approval_rejected", "rejected", {"current_phase": s.phase})
+            raise ValueError(f"Session is '{s.phase}', not awaiting approval.")
+        s._workflow_finished = _monotonic()
+        _record_audit(s, "recovery_discarded", "rejected", {"timings": s.timing_report()})   # audit first
+        s.phase = "discarded"
     s.log("HITL Gate", "Plan discarded by a human. Production was not touched.", "warn")
     for name in (f"branch_{s.id}.db", f"scratch_{s.id}.db"):
         try:
@@ -323,8 +323,12 @@ def undo(sid):
         undo_started = _monotonic()
         saved_audit = list(audit.read_events(live))   # the snapshot restore below would roll the audit log back too
         try:
-            tools.undo_recovery(live, os.path.join(db.DATA, f"backup_{s.id}.db"), os.path.join(db.DATA, f"backup_{s.id}.py"))
-            audit.restore_events(live, saved_audit)
+            try:
+                tools.undo_recovery(live, os.path.join(db.DATA, f"backup_{s.id}.db"), os.path.join(db.DATA, f"backup_{s.id}.py"))
+            finally:
+                # Runs even if the source-code restore fails after the DB snapshot already replaced the audit rows,
+                # and before undo_failed is recorded below.
+                audit.restore_events(live, saved_audit)
             s.timings["undo_seconds"] = _elapsed(undo_started, _monotonic())
         except Exception as e:
             s.timings["undo_seconds"] = _elapsed(undo_started, _monotonic())
