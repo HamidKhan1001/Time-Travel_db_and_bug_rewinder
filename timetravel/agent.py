@@ -7,7 +7,7 @@ import uuid
 from . import audit, db, llm, recovery_projection, tools
 
 PACE = float(os.getenv("TT_PACE", "0.4"))     # tiny pause between steps so the feed is readable on stage
-SESSIONS = {}
+SESSIONS: dict[str, "Session"] = {}
 _monotonic = time.perf_counter
 
 

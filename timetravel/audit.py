@@ -42,6 +42,8 @@ def record_event(
         f"INSERT INTO {TABLE}(session_id,event_type,status,ts,detail_json) VALUES(?,?,?,?,?)",
         (session_id, event_type, status, time.time(), detail_json),
     )
+    if cur.lastrowid is None:
+        raise RuntimeError("audit insert did not return a row id")
     return int(cur.lastrowid)
 
 
