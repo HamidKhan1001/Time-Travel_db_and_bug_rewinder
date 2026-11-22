@@ -11,3 +11,5 @@ test-reports/
 *.egg-info/
 build/
 .venv/
+ui_concepts/
+NEXT_SESSION_CONTEXT.md

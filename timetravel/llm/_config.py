@@ -32,7 +32,12 @@ class LLMConfig:
             bedrock_region=os.getenv("TT_BEDROCK_REGION", "us-east-1"),
             bedrock_model=os.getenv(
                 "TT_BEDROCK_MODEL",
-                "anthropic.claude-3-haiku-20240307-v1:0",
+                # Claude Haiku 5.5 — current generation on Bedrock (Nov 2026).
+                # For cross-region inference, prefix with your geography:
+                #   us.anthropic.claude-haiku-5-5
+                #   eu.anthropic.claude-haiku-5-5
+                # Set TT_BEDROCK_MODEL to override without touching this file.
+                "anthropic.claude-haiku-5-5",
             ),
             provider=os.getenv("TT_LLM_PROVIDER", "gemini").lower(),
             timeout_s=int(os.getenv("TT_LLM_TIMEOUT", "10")),

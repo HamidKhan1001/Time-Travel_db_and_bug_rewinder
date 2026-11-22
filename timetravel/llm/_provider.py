@@ -102,10 +102,15 @@ class GeminiProvider:
 
 class BedrockProvider:
     """
-    AWS Bedrock provider using Claude 3 Haiku with Tool Use.
+    AWS Bedrock provider using Claude Haiku 5.5 with Tool Use.
 
     Tool Use forces Claude to fill in a typed form matching our schema —
     equivalent to Gemini's native responseSchema. No manual text parsing.
+
+    Default model: anthropic.claude-haiku-5-5 (Nov 2026, current generation).
+    For cross-region inference profiles prefix with geography:
+      us.anthropic.claude-haiku-5-5  /  eu.anthropic.claude-haiku-5-5
+    Override via TT_BEDROCK_MODEL env var without touching source.
 
     Credentials are picked up automatically by boto3 from:
       AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY + AWS_DEFAULT_REGION
