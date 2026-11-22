@@ -1,13 +1,26 @@
-"""Apex Gear storefront request handlers (the application code the agent can patch)."""
+"""Apex Gear storefront request handlers (the application code the agent can patch).
+
+Scenario 1 — Stock wipe:  sync_stock()  missing WHERE → wipes all 1,420 stock values to 0.
+Scenario 2 — Price wipe:  sync_price()  missing WHERE → zeroes every price_cents in inventory.
+
+Both handlers follow the same pattern so the agent's patch logic is symmetric:
+  - Add a guard that rejects payloads missing the sku key.
+  - Scope the UPDATE to WHERE sku = ?.
+"""
 import uuid
 
 
 def run_sql(conn, source, sql, params=()):
+    """Execute sql and record it in query_log for the agent's incident detector."""
     cur = conn.execute(sql, params)
     conn.execute("INSERT INTO query_log(ts, source, sql, rows_affected) VALUES (app_now(), ?, ?, ?)",
                  (source, sql, cur.rowcount))
     return cur.rowcount
 
+
+# ---------------------------------------------------------------------------
+# Scenario 1 — warehouse stock sync  (BUG: unscoped UPDATE)
+# ---------------------------------------------------------------------------
 
 def sync_stock(conn, payload):
     """POST /api/admin/sync-stock - warehouse feed sets the on-hand count for ONE sku."""
@@ -16,6 +29,20 @@ def sync_stock(conn, payload):
     sql = "UPDATE inventory SET stock = ?"
     args = (stock,)
     updated = run_sql(conn, "POST /api/admin/sync-stock", sql, args)
+    return {"updated_rows": updated}
+
+
+# ---------------------------------------------------------------------------
+# Scenario 2 — pricing-feed sync  (BUG: unscoped UPDATE)
+# ---------------------------------------------------------------------------
+
+def sync_price(conn, payload):
+    """POST /api/admin/sync-price - pricing feed updates the sale price for ONE sku."""
+    sku = payload.get("sku")
+    price_cents = int(payload.get("price_cents", 0))
+    sql = "UPDATE inventory SET price_cents = ?"
+    args = (price_cents,)
+    updated = run_sql(conn, "POST /api/admin/sync-price", sql, args)
     return {"updated_rows": updated}
 
 

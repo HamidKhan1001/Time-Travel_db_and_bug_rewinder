@@ -60,10 +60,13 @@ export const backend = {
 
   async triggerWarehouseSync(scenarioId) {
     await snapshot(scenarioId) // capture current stock as "previous"
-    const result = await request('/api/demo/crash', { method: 'POST', body: {} })
+    const isPrice = scenarioId === 'scenario-2'
+    const endpoint = isPrice ? '/api/demo/crash2' : '/api/demo/crash'
+    const result = await request(endpoint, { method: 'POST', body: {} })
     const rows = result.updated_rows
+    const actionLabel = isPrice ? 'Pricing sync' : 'Warehouse sync'
     memory.lastAction = {
-      label: `Warehouse sync · touched ${rows} row${rows === 1 ? '' : 's'}`,
+      label: `${actionLabel} · touched ${rows} row${rows === 1 ? '' : 's'}`,
       tone: rows > 1 ? 'danger' : 'success',
       time: fmtTime(nowSeconds()),
     }
@@ -73,12 +76,14 @@ export const backend = {
   async placeOrders(scenarioId) {
     const before = await request('/api/state')
     if ((before.orders || []).some((o) => o.id >= 1041)) {
-      throw new ApiError('Orders #1041–#1043 are already placed. Reset the demo to place them again.', {
+      throw new ApiError('Orders #1041+ are already placed. Reset the demo to place them again.', {
         code: 'ORDERS_ALREADY_PLACED',
         status: 409,
       })
     }
-    const result = await request('/api/demo/orders', { method: 'POST', body: {} })
+    const isPrice = scenarioId === 'scenario-2'
+    const endpoint = isPrice ? '/api/demo/orders2' : '/api/demo/orders'
+    const result = await request(endpoint, { method: 'POST', body: {} })
     const ids = result.orders.map((o) => o.order_id)
     memory.lastAction = { label: `Placed orders #${ids[0]}–#${ids.at(-1)}`, tone: 'info', time: fmtTime(nowSeconds()) }
     return snapshot(scenarioId)
