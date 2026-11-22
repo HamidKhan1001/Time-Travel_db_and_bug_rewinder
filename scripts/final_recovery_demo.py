@@ -7,8 +7,8 @@ Uses the existing project workflow:
 - human approval gate via agent.approve() (explicit confirmation prompt)
 - smoke checks run inside the HTTP apply path, followed by separate business-table checksum verification in this script
 
-Run: python3 final_recovery_demo.py
-Optional: python3 final_recovery_demo.py --yes  # explicit non-interactive approval for automation
+Run: python3 scripts/final_recovery_demo.py
+Optional: python3 scripts/final_recovery_demo.py --yes  # explicit non-interactive approval for automation
 """
 import argparse
 import json
@@ -16,7 +16,7 @@ import os
 import sys
 import time
 
-ROOT = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 os.environ.setdefault("TT_PACE", "0")
 

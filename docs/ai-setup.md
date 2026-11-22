@@ -16,7 +16,7 @@ Get a key at [Google AI Studio](https://aistudio.google.com/apikey).
 
 ### 2. Install Dependencies
 ```bash
-pip install -r requirements-gemini.txt
+pip install ".[gemini]"
 ```
 
 ### 3. Run with Gemini
@@ -45,7 +45,7 @@ python3 server.py
 
 ### 2. Install Dependencies
 ```bash
-pip install -r requirements-bedrock.txt
+pip install ".[bedrock]"
 ```
 
 ### 3. Run with Bedrock
