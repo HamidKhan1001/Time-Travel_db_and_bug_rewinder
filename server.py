@@ -4,8 +4,9 @@ import os
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import parse_qs, urlsplit
 
-from timetravel import agent, appcode, db, seed, tools
+from timetravel import agent, appcode, db, seed, sse, tools
 
 WEB = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web")
 WARM = {"ms": None, "at": None}
@@ -77,6 +78,12 @@ def post(path, body):
 
 
 class H(BaseHTTPRequestHandler):
+    def handle(self):
+        try:
+            super().handle()
+        except (BrokenPipeError, ConnectionResetError, OSError):
+            pass
+
     def log_message(self, *a):
         pass
 
@@ -94,8 +101,55 @@ class H(BaseHTTPRequestHandler):
                 return self._send(200, open(os.path.join(WEB, "index.html"), "rb").read(), "text/html; charset=utf-8")
             if self.path == "/api/state":
                 return self._send(200, api_state())
-            if self.path.startswith("/api/session/"):
-                return self._send(200, agent.SESSIONS[self.path.split("/")[3]].to_json())
+
+            parsed = urlsplit(self.path)
+            if parsed.path.startswith("/api/session/") and parsed.path.endswith("/events"):
+                parts = parsed.path.strip("/").split("/")
+                sid = parts[2] if len(parts) > 2 else ""
+                if not sse.validate_session_id(sid):
+                    return self._send(400, {"error": "invalid session id"})
+                try:
+                    header_id = self.headers.get("Last-Event-ID")
+                    query_id = parse_qs(parsed.query).get("last_event_id", [None])[0]
+                    after_id = sse.parse_last_event_id(header_id if header_id is not None else query_id)
+                except ValueError as error:
+                    return self._send(400, {"error": str(error)})
+                try:
+                    historical = sse.read_events_after(sid, after_id)
+                except Exception:
+                    return self._send(500, {"error": "audit stream unavailable"})
+                if not historical and sid not in agent.SESSIONS:
+                    return self._send(404, {"error": "session or audit history not found"})
+
+                self.send_response(200)
+                self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+                self.send_header("Cache-Control", "no-cache")
+                self.send_header("Connection", "keep-alive")
+                self.send_header("X-Accel-Buffering", "no")
+                self.end_headers()
+                try:
+                    self.wfile.write(b"retry: 3000\n\n")
+                    self.wfile.flush()
+                    for frame in sse.iter_sse_frames(sid, after_id):
+                        self.wfile.write(frame.encode("utf-8"))
+                        self.wfile.flush()
+                except (BrokenPipeError, ConnectionResetError, OSError):
+                    pass
+                return
+
+            if parsed.path.startswith("/api/session/") and parsed.path.endswith("/audit"):
+                sid = parsed.path.split("/")[3]
+                events = agent.audit_events(sid)
+                if not events:
+                    return self._send(404, {"error": "audit history not found"})
+                return self._send(200, {"session_id": sid, "events": events})
+
+            if parsed.path.startswith("/api/session/"):
+                sid = parsed.path.split("/")[3]
+                if sid not in agent.SESSIONS:
+                    return self._send(404, {"error": "session not found"})
+                return self._send(200, agent.SESSIONS[sid].to_json())
+
             self._send(404, {"error": "not found"})
         except Exception as e:
             self._send(500, {"error": str(e)})
