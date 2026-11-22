@@ -1,0 +1,65 @@
+name: hamid_bot
+
+# Reusable workflow, called from ci.yml after the Quality gate passes.
+# hamid_bot approves a pull request only when:
+#   - every CI job succeeded (that is why ci.yml calls it with `needs: quality-gate`),
+#   - the PR is from this repository (never a fork) and is not a draft or a Dependabot PR,
+#   - it does not touch protected paths (CI, CODEOWNERS, the SQL guard, dependency manifests).
+# Protected-path PRs are left for a human. hamid_bot never merges.
+#
+# Identity: approvals come from github-actions[bot] unless the repository secret HAMID_BOT_TOKEN
+# (a personal access token for a dedicated hamid_bot account with write access) is set.
+# Repo setting required: Settings > Actions > General > "Allow GitHub Actions to create and approve pull requests".
+
+on:
+  workflow_call:
+    inputs:
+      pr-number:
+        description: Pull request number to review
+        required: true
+        type: number
+    secrets:
+      HAMID_BOT_TOKEN:
+        required: false
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  review:
+    name: hamid_bot review
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Decide and approve
+        env:
+          GH_TOKEN: ${{ secrets.HAMID_BOT_TOKEN || github.token }}
+          PR: ${{ inputs.pr-number }}
+          REPO: ${{ github.repository }}
+          IDENTITY: ${{ secrets.HAMID_BOT_TOKEN && 'hamid_bot account' || 'github-actions[bot]' }}
+        run: |
+          set -euo pipefail
+
+          files=$(gh api --paginate "repos/$REPO/pulls/$PR/files" --jq '.[].filename')
+          echo "Changed files:"; echo "$files"
+
+          protected=$(echo "$files" | grep -E '^(\.github/|timetravel/guard\.py$|requirements[^/]*\.txt$|pyproject\.toml$|frontend/package(-lock)?\.json$)' || true)
+          if [ -n "$protected" ]; then
+            {
+              echo "### hamid_bot: human review required"
+              echo "This PR changes protected paths, so it is not auto-approved:"
+              echo '```'; echo "$protected"; echo '```'
+            } | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          # Do not stack duplicate approvals when CI is re-run on the same commit.
+          sha=$(gh api "repos/$REPO/pulls/$PR" --jq .head.sha)
+          already=$(gh api "repos/$REPO/pulls/$PR/reviews" --jq "[.[] | select(.state==\"APPROVED\" and .commit_id==\"$sha\" and (.body | startswith(\"hamid_bot\")))] | length")
+          if [ "$already" != "0" ]; then
+            echo "hamid_bot already approved $sha"; exit 0
+          fi
+
+          gh pr review "$PR" --repo "$REPO" --approve --body "hamid_bot: approved. Lint, type check, Python tests (coverage floor 75%), intent evals, frontend lint/tests/build, end-to-end tests, dependency audits and the Docker build all passed on $sha, and no protected paths changed. A human still merges. (Approved as $IDENTITY.)"
+          echo "### hamid_bot: approved $sha" >> "$GITHUB_STEP_SUMMARY"
