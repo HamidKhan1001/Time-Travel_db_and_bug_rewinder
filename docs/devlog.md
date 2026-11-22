@@ -104,6 +104,9 @@ data/
 | `STAGE VISIBILITY` | No projector mode (large fonts, high contrast, `?projector` param) | Small |
 
 ### Team 2 — Backend
+
+> Historical planning snapshot: the gaps in this section describe the state when the devlog was written. `SPEED PROOF`, `SCALE PROOF`, and `INTEGRITY` were addressed in later phases; current evidence is in [`PERFORMANCE.md`](PERFORMANCE.md) and [`AUDIT.md`](AUDIT.md).
+
 | Item | Gap | Effort |
 |------|-----|--------|
 | `REAL-TIME` | No SSE endpoint. Add `GET /api/session/<id>/stream` → `text/event-stream` | Medium |

@@ -117,6 +117,34 @@ A sampled value that cannot be read after apply is represented as `{"unavailable
 
 `status` is `passed` or `failed` only when the backend executed checks. It is `unavailable` when checks are absent. The UI separately shows checksum verification as unavailable; checksum verification exists in `timetravel/recovery` but is not wired into the HTTP session path.
 
+### Phase 5 timing fields
+
+`timings` is an additive session field. Every value is elapsed seconds from `time.perf_counter()` (a monotonic clock) or `null` when that stage did not run in this process.
+
+```json
+{
+  "timings": {
+    "planning_preview_seconds": 0.0421,
+    "approval_delay_seconds": 0.0032,
+    "recovery_execution_seconds": 0.3187,
+    "verification_seconds": 0.0046,
+    "undo_seconds": null,
+    "total_workflow_seconds": 1.2044
+  }
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `planning_preview_seconds` | Time spent in merge planning plus building the read-only recovery preview. `null` until planning completes. |
+| `approval_delay_seconds` | Time from approval acceptance to the start of the execution phase. `null` until execution starts. |
+| `recovery_execution_seconds` | Duration of the HTTP apply/cutover call. It includes post-apply smoke checks but excludes separate checksum verification, which is not used by this path. `null` until apply is attempted. |
+| `verification_seconds` | Duration of the post-apply smoke checks inside the apply call. It is not checksum verification. `null` if checks did not run. |
+| `undo_seconds` | Duration of `tools.undo_recovery` when undo is called. `null` if undo was not attempted. |
+| `total_workflow_seconds` | Time from session creation to the first terminal `applied` or `error` phase. It includes the human approval wait and is `null` while the workflow is active. |
+
+Timing values are in-memory session measurements and are not restored after a process restart. Durable audit events may include the same timing summary in their `detail` object when the corresponding event is recorded. Wall-clock fields such as `created`, `generated_at`, and `completed_at` remain timestamps and are not used as elapsed durations.
+
 ## GET `/api/session/<id>/audit`
 
 Returns durable session audit events stored in SQLite.

@@ -294,7 +294,7 @@ def diagnose_and_patch_tool(live, branch, incident):
 
 
 # ---------------------------------------------------------------- 5. apply + undo
-def apply_recovery_tool(live, plan, expected, preserved_ids, marker, patched_source, backup_db, backup_src):
+def apply_recovery_tool(live, plan, expected, preserved_ids, marker, patched_source, backup_db, backup_src, timing=None):
     """Approved cutover. Atomic: either every check passes and we commit, or nothing changes."""
     cur_marker = live.execute("SELECT COALESCE(MAX(id),0) FROM changelog").fetchone()[0]
     if cur_marker != marker:
@@ -306,7 +306,10 @@ def apply_recovery_tool(live, plan, expected, preserved_ids, marker, patched_sou
     live.execute("BEGIN IMMEDIATE")
     try:
         execute_plan(live, plan)
+        verification_started = time.perf_counter()
         checks = run_checks(live, expected, preserved_ids)
+        if timing is not None:
+            timing["verification_seconds"] = time.perf_counter() - verification_started
         if not all(c["ok"] for c in checks):
             raise RuntimeError("Post-apply smoke checks failed: " + "; ".join(c["name"] for c in checks if not c["ok"]))
         live.execute("COMMIT")

@@ -89,5 +89,42 @@ class IntegrityVerificationTests(unittest.TestCase):
         self.assertEqual(run["status"], "rolled-back")
 
 
+    def test_checksum_is_stable_for_unchanged_state(self):
+        first = verification.checksum_database(self.conn, db.TABLES)
+        second = verification.checksum_database(self.conn, db.TABLES)
+        self.assertEqual(first, second)
+        self.assertEqual(len(first), 64)
+
+    def test_checksum_covers_all_business_tables(self):
+        self.conn.execute(
+            "INSERT INTO orders(id,customer_id,total_cents,status,idem_key,created_at) "
+            "VALUES(1,1,100,'paid','idem-1',1)")
+        self.conn.execute(
+            "INSERT INTO order_items(id,order_id,sku,qty,unit_cents) VALUES(1,1,'SKU-1',1,100)")
+        baseline = self.baseline()
+
+        self.conn.execute("UPDATE customers SET name='Changed' WHERE id=1")
+        self.conn.execute("UPDATE inventory SET stock=5 WHERE sku='SKU-1'")
+        self.conn.execute("UPDATE orders SET status='backorder' WHERE id=1")
+        self.conn.execute("UPDATE order_items SET qty=2 WHERE id=1")
+        report = verification.verify_state_against(self.conn, baseline)
+
+        self.assertEqual(report["integrity_status"], "FAILED")
+        self.assertEqual(report["mismatching_rows"], 4)
+        self.assertEqual(
+            sorted({entry[0] for entry in report["samples"]["modified"]}),
+            ["customers", "inventory", "order_items", "orders"],
+        )
+
+    def test_checksum_scope_excludes_query_log(self):
+        baseline = self.baseline()
+        self.conn.execute(
+            "INSERT INTO query_log(ts,source,sql,rows_affected) VALUES(1,'test','SELECT 1',0)")
+        report = verification.verify_state_against(self.conn, baseline)
+        self.assertEqual(report["integrity_status"], "VERIFIED")
+        self.assertTrue(report["checksum_match"])
+        self.assertNotIn("query_log", report["checked_tables"])
+
+
 if __name__ == "__main__":
     unittest.main()

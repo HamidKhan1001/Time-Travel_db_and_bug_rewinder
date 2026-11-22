@@ -2,6 +2,7 @@ import argparse
 import json
 import os
 import platform
+import shlex
 import shutil
 import sqlite3
 import statistics
@@ -80,7 +81,11 @@ def environment_info():
         "logical_cpus": os.cpu_count(),
         "total_memory_gb": _total_memory_gb(),
         "python_version": platform.python_version(),
+        "python_implementation": platform.python_implementation(),
+        "python_compiler": platform.python_compiler(),
         "sqlite_version": sqlite3.sqlite_version,
+        "third_party_dependencies": {},
+        "resource_module_available": resource is not None,
         "git_commit": _command_output(["git", "-C", ROOT, "rev-parse", "--short", "HEAD"]),
     }
 
@@ -192,6 +197,7 @@ def run_iteration(rows, seed, workdir, iteration):
 
 def summarize(values):
     return {
+        "sample_count": len(values),
         "average": round(statistics.mean(values), 6),
         "median": round(statistics.median(values), 6),
         "minimum": round(min(values), 6),
@@ -229,22 +235,33 @@ def main():
 
     output_path = os.path.abspath(args.output)
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    benchmark_mode = "smoke" if args.iterations == 1 and args.datasets == [1000] else "full"
     document = {
         "metadata": {
             "generated_at_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-            "command": "python3 benchmarks/benchmark_recovery.py",
+            "command": shlex.join([sys.executable] + sys.argv),
+            "documented_command": shlex.join([
+                sys.executable, "benchmarks/benchmark_recovery.py",
+                "--datasets", *(str(value) for value in args.datasets),
+                "--iterations", str(args.iterations),
+                "--seed", str(args.seed),
+                "--output", output_path,
+            ]),
+            "benchmark_mode": benchmark_mode,
+            "raw_results_preserved": True,
             "seed": args.seed,
             "iterations_requested": args.iterations,
             "datasets_requested": args.datasets,
-            "timing_source": "time.perf_counter",
-            "memory_source": "resource.getrusage process high-water mark",
             "dataset_shape": "N inventory rows plus 10 customers, 20 orders, and 20 order items",
             "faulty_operation": "UPDATE inventory SET stock = 0",
+            "timing_source": "time.perf_counter",
+            "memory_source": "resource.getrusage process high-water mark (unavailable on Windows)",
             "notes": [
                 "Every timing comes from an actual recovery execution; no estimates or delays are used.",
                 "Peak RSS is a process-wide high-water mark and does not decrease between iterations.",
                 "Recovery execution excludes live checksum verification but includes preflight, simulation, apply, and commit.",
-                "Total recovery duration is wall-clock time from snapshot creation through execute_plan.",
+                "Total recovery duration is elapsed monotonic time from snapshot creation through execute_plan.",
+                "Summaries include sample_count; failed iterations are preserved in dataset errors.",
             ],
         },
         "environment": environment_info(),
