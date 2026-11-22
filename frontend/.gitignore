@@ -33,3 +33,5 @@ pnpm-debug.log*
 
 # Claude Code local files
 .claude/settings.local.json
+test-results/
+playwright-report/

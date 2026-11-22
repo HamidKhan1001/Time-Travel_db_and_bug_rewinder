@@ -182,14 +182,6 @@ class SSETests(unittest.TestCase):
         self.assertEqual(name, "recovery_failed")
         self.assertIn("detail_json_error", frame)
 
-    def test_frontend_uses_eventsource_and_stable_id_deduplication(self):
-        html_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "web", "index.html")
-        with open(html_path, "r", encoding="utf-8") as handle:
-            html = handle.read()
-        self.assertIn("new EventSource('/api/session/'", html)
-        self.assertIn("sseSeen", html)
-        self.assertIn("source.close()", html)
-
     def test_stream_stops_when_client_close_callback_reports_closed(self):
         record = {"id": 21, "session_id": "INC-A1B2C3", "event_type": "recovery_completed",
                   "status": "completed", "ts": 1.0, "detail": {}}

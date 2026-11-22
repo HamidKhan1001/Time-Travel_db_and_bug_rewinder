@@ -1,0 +1,307 @@
+[
+ {
+  "id": "c01",
+  "prompt": "Take the business back to 2 minutes ago, keep the 3 orders, and fix the bug",
+  "expected": {
+   "rewind_seconds": 120,
+   "before_incident": false,
+   "preserve": [
+    "orders"
+   ],
+   "preserve_count": 3,
+   "remediate": true
+  },
+  "tag": "basic"
+ },
+ {
+  "id": "c02",
+  "prompt": "rewind 90 seconds",
+  "expected": {
+   "rewind_seconds": 90,
+   "before_incident": false,
+   "preserve": [],
+   "preserve_count": null,
+   "remediate": false
+  },
+  "tag": "basic"
+ },
+ {
+  "id": "c03",
+  "prompt": "Restore to before the crash",
+  "expected": {
+   "rewind_seconds": null,
+   "before_incident": true,
+   "preserve": [],
+   "preserve_count": null,
+   "remediate": false
+  },
+  "tag": "basic"
+ },
+ {
+  "id": "c04",
+  "prompt": "go back 5 minutes and keep all orders",
+  "expected": {
+   "rewind_seconds": 300,
+   "before_incident": false,
+   "preserve": [
+    "orders"
+   ],
+   "preserve_count": null,
+   "remediate": false
+  },
+  "tag": "basic"
+ },
+ {
+  "id": "c05",
+  "prompt": "Undo the warehouse sync from 10 minutes ago and patch the handler",
+  "expected": {
+   "rewind_seconds": 600,
+   "before_incident": false,
+   "preserve": [],
+   "preserve_count": null,
+   "remediate": true
+  },
+  "tag": "basic"
+ },
+ {
+  "id": "c06",
+  "prompt": "rewind 2 hrs",
+  "expected": {
+   "rewind_seconds": 7200,
+   "before_incident": false,
+   "preserve": [],
+   "preserve_count": null,
+   "remediate": false
+  },
+  "tag": "units"
+ },
+ {
+  "id": "c07",
+  "prompt": "Take us back 45 secs, keep the customers",
+  "expected": {
+   "rewind_seconds": 45,
+   "before_incident": false,
+   "preserve": [
+    "customers"
+   ],
+   "preserve_count": null,
+   "remediate": false
+  },
+  "tag": "units"
+ },
+ {
+  "id": "c08",
+  "prompt": "go back 1.5 hours",
+  "expected": {
+   "rewind_seconds": 5400,
+   "before_incident": false,
+   "preserve": [],
+   "preserve_count": null,
+   "remediate": false
+  },
+  "tag": "units"
+ },
+ {
+  "id": "c09",
+  "prompt": "rewind 10s",
+  "expected": {
+   "rewind_seconds": 10,
+   "before_incident": false,
+   "preserve": [],
+   "preserve_count": null,
+   "remediate": false
+  },
+  "tag": "units"
+ },
+ {
+  "id": "c10",
+  "prompt": "back to 3 mins ago; keep the 5 orders; patch",
+  "expected": {
+   "rewind_seconds": 180,
+   "before_incident": false,
+   "preserve": [
+    "orders"
+   ],
+   "preserve_count": 5,
+   "remediate": true
+  },
+  "tag": "units"
+ },
+ {
+  "id": "c11",
+  "prompt": "restore from 15 min ago, keep 12 orders, no code changes",
+  "expected": {
+   "rewind_seconds": 900,
+   "before_incident": false,
+   "preserve": [
+    "orders"
+   ],
+   "preserve_count": 12,
+   "remediate": false
+  },
+  "tag": "negation"
+ },
+ {
+  "id": "c12",
+  "prompt": "Don't touch the code, just rewind to 3 minutes ago",
+  "expected": {
+   "rewind_seconds": 180,
+   "before_incident": false,
+   "preserve": [],
+   "preserve_count": null,
+   "remediate": false
+  },
+  "tag": "negation"
+ },
+ {
+  "id": "c13",
+  "prompt": "Roll back to before the incident and fix it",
+  "expected": {
+   "rewind_seconds": null,
+   "before_incident": true,
+   "preserve": [],
+   "preserve_count": null,
+   "remediate": true
+  },
+  "tag": "basic"
+ },
+ {
+  "id": "c14",
+  "prompt": "restore the state just before the warehouse sync ran",
+  "expected": {
+   "rewind_seconds": null,
+   "before_incident": true,
+   "preserve": [],
+   "preserve_count": null,
+   "remediate": false
+  },
+  "tag": "paraphrase"
+ },
+ {
+  "id": "c15",
+  "prompt": "Please fix the bug that caused the wipe",
+  "expected": {
+   "rewind_seconds": null,
+   "before_incident": false,
+   "preserve": [],
+   "preserve_count": null,
+   "remediate": true
+  },
+  "tag": "basic"
+ },
+ {
+  "id": "c16",
+  "prompt": "hello world",
+  "expected": {
+   "rewind_seconds": null,
+   "before_incident": false,
+   "preserve": [],
+   "preserve_count": null,
+   "remediate": false
+  },
+  "tag": "noise"
+ },
+ {
+  "id": "c17",
+  "prompt": "revert to prior to the sync, keep the new orders, repair the code",
+  "expected": {
+   "rewind_seconds": null,
+   "before_incident": true,
+   "preserve": [
+    "orders"
+   ],
+   "preserve_count": null,
+   "remediate": true
+  },
+  "tag": "paraphrase"
+ },
+ {
+  "id": "c18",
+  "prompt": "Go back one hour",
+  "expected": {
+   "rewind_seconds": 3600,
+   "before_incident": false,
+   "preserve": [],
+   "preserve_count": null,
+   "remediate": false
+  },
+  "tag": "paraphrase"
+ },
+ {
+  "id": "c19",
+  "prompt": "I need the database as it was half an hour ago",
+  "expected": {
+   "rewind_seconds": 1800,
+   "before_incident": false,
+   "preserve": [],
+   "preserve_count": null,
+   "remediate": false
+  },
+  "tag": "paraphrase"
+ },
+ {
+  "id": "c20",
+  "prompt": "Wind the clock back by two minutes",
+  "expected": {
+   "rewind_seconds": 120,
+   "before_incident": false,
+   "preserve": [],
+   "preserve_count": null,
+   "remediate": false
+  },
+  "tag": "paraphrase"
+ },
+ {
+  "id": "c21",
+  "prompt": "Revert inventory to 20 minutes ago, preserve the orders",
+  "expected": {
+   "rewind_seconds": 1200,
+   "before_incident": false,
+   "preserve": [
+    "orders"
+   ],
+   "preserve_count": null,
+   "remediate": false
+  },
+  "tag": "paraphrase"
+ },
+ {
+  "id": "c22",
+  "prompt": "Rewind to before the bug but do not fix anything",
+  "expected": {
+   "rewind_seconds": null,
+   "before_incident": true,
+   "preserve": [],
+   "preserve_count": null,
+   "remediate": false
+  },
+  "tag": "negation"
+ },
+ {
+  "id": "c23",
+  "prompt": "go back 2 minutes, keep orders and customers",
+  "expected": {
+   "rewind_seconds": 120,
+   "before_incident": false,
+   "preserve": [
+    "orders",
+    "customers"
+   ],
+   "preserve_count": null,
+   "remediate": false
+  },
+  "tag": "multi"
+ },
+ {
+  "id": "c24",
+  "prompt": "The sync at 2:14 broke stock; rewind to just before it",
+  "expected": {
+   "rewind_seconds": null,
+   "before_incident": true,
+   "preserve": [],
+   "preserve_count": null,
+   "remediate": false
+  },
+  "tag": "paraphrase"
+ }
+]

@@ -5,7 +5,7 @@ The demo server is a Python `ThreadingHTTPServer` listening on `127.0.0.1:8000` 
 ## General behavior
 
 - Successful POST routes return HTTP `200` with a route-specific JSON body.
-- Unknown POST routes return `404 {"error":"unknown route <path>"}`.
+- Unknown POST routes return `404 {"error":"unknown route <path>"}`; unknown sessions return `404 {"error":"session not found"}`; a missing request field returns `400 {"error":"missing field '<name>'"}`.
 - POST request/handler errors return `400 {"error":"<message>"}`.
 - Unknown GET paths return `404 {"error":"not found"}`.
 - Unknown session GET requests return `404 {"error":"session not found"}`; unknown audit history returns `404 {"error":"audit history not found"}`; unknown or historical-empty SSE sessions return `404 {"error":"session or audit history not found"}`.
@@ -15,15 +15,23 @@ The demo server is a Python `ThreadingHTTPServer` listening on `127.0.0.1:8000` 
 
 ## GET `/`
 
-Serves `web/index.html` as HTML.
+Redirects (302) to `/app/`. `/index.html` does the same.
 
-## GET `/index.html`
+## GET `/app/...`
 
-Alias for `/`.
+Serves the built React app from `frontend/dist` (build it with `cd frontend && npm run build:live`). Unknown paths without a file extension return the app shell so client-side routes work; missing files return `404`. If the app has not been built, the response is a `404` with a message saying how to build it.
 
-## GET `/js/recovery_data.js`, GET `/js/recovery_view.js`
+## GET `/api/audit`, `/api/audit/summary`, `/api/audit/<id>`
 
-Serves the Phase 4 frontend modules with `application/javascript; charset=utf-8`. Only these two filenames are allowed; any other path under `/js/` returns `404`.
+Recovery history built from the durable audit events. `/api/audit` accepts `search`, `status` (`applied|undone|discarded|failed`), `scenario`, `page` and `pageSize` and returns `{items, total, page, pageSize}`. Sessions that are still in flight are not listed. `/api/audit/summary` returns `{totalRecoveries, today, successRate, targetSuccessRate}`.
+
+## POST `/api/session/<id>/discard`
+
+Rejects a plan that is `awaiting_approval`. Production data is not touched. Any other phase returns `400`.
+
+## Cross-origin rules
+
+Browsers on `localhost` / `127.0.0.1` (any port) may call the API (CORS). A POST that carries any other `Origin` header gets `403`.
 
 ## GET `/api/state`
 

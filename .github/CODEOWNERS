@@ -1,0 +1,7 @@
+# Paths where a human must review. Enable "Require review from Code Owners" in branch protection.
+/.github/                 @HamidKhan1001
+/timetravel/guard.py      @HamidKhan1001
+/timetravel/tools.py      @HamidKhan1001
+/server.py                @HamidKhan1001
+/requirements*.txt        @HamidKhan1001
+/frontend/package*.json   @HamidKhan1001

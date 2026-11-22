@@ -1,0 +1,51 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "time-travel-db"
+version = "0.2.0"
+description = "Point-in-time recovery for a corrupted database that keeps legitimate writes made after the crash, with an AI agent, a human approval gate and undo."
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.11"
+# The core engine, server and tests use only the standard library and SQLite.
+dependencies = []
+
+[project.optional-dependencies]
+gemini = ["google-genai>=2.30.1"]
+bedrock = ["boto3>=1.34.0"]
+ai = ["google-genai>=2.30.1", "boto3>=1.34.0"]
+dev = ["ruff>=0.6", "coverage>=7", "mypy>=1.10", "pip-audit>=2.7"]
+
+[project.scripts]
+time-travel-server = "server:main"
+
+[tool.setuptools]
+packages = ["timetravel", "timetravel.llm", "timetravel.recovery"]
+py-modules = ["server", "reset"]
+
+# ---------------------------------------------------------------- tooling
+[tool.ruff]
+target-version = "py311"
+# app/ and seed/ hold the intentionally buggy demo handler (the bug IS the demo), so they are not linted.
+extend-exclude = ["app", "seed", "frontend", "data", "test-reports"]
+
+[tool.ruff.lint]
+# Real bugs only (syntax errors, undefined names, unused imports/variables). Style rules can be added later.
+select = ["E9", "F"]
+
+[tool.coverage.run]
+source = ["timetravel", "server.py"]
+branch = true
+
+[tool.coverage.report]
+fail_under = 75
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+warn_unused_ignores = true
+no_implicit_optional = true
+files = ["timetravel", "server.py"]
+exclude = ["^app/", "^seed/", "^frontend/", "^tests/"]

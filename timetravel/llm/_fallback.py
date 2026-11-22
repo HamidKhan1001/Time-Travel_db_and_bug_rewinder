@@ -22,7 +22,9 @@ _TIME_RE = re.compile(
     r"(seconds?|secs?|minutes?|mins?|hours?|hrs?|[smh])"
     r"\b\s*(?:ago|earlier)?",
 )
-_INCIDENT_RE = re.compile(r"before the (crash|incident|wipe|bug)")
+_INCIDENT_RE = re.compile(
+    r"\b(?:before|prior to)\s+the\s+(?:\w+\s+)?(crash|incident|wipe|bug|sync|outage|corruption)\b"
+)
 _PRESERVE_RE = re.compile(r"keep (?:the |all )?(\d+)?\s*(orders?|customers?)")
 _REMEDIATE_RE = re.compile(r"\b(fix|patch|repair)\b")
 
@@ -61,7 +63,7 @@ def parse_intent_regex(prompt: str) -> IntentResult:
     return IntentResult(
         rewind_seconds=rewind_seconds,
         before_incident=before_incident,
-        preserve=preserve,
+        preserve=tuple(preserve),
         preserve_count=preserve_count,
         remediate=remediate,
         confidence=0.9,

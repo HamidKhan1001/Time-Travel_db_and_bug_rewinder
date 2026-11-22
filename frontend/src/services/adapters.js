@@ -53,8 +53,11 @@ export function toSnapshot(state, ctx = {}) {
   const { prevStocks = {}, lastAction = null, recovery = null, localLog = [], scenarioId = 'warehouse-wipe' } = ctx
   const incidentRow = state.incident || null
   const patched = Boolean(state.patched)
-  // The crash stays in the query log after a fix, so "active" means: crash seen and not yet fixed.
-  const incidentActive = Boolean(incidentRow) && !patched
+  // The crash stays in the query log after a fix, so "active" means: crash seen, code not patched, and the
+  // data is still wiped (most SKUs at zero). A rewind-only recovery restores the data without patching code.
+  const skus = state.inventory?.skus ?? 0
+  const wiped = skus > 0 ? (state.inventory?.zero ?? 0) / skus > 0.5 : (state.inventory?.sample || []).every((r) => r.stock === 0)
+  const incidentActive = Boolean(incidentRow) && !patched && wiped
 
   const inventory = (state.inventory?.sample || []).map((row) => {
     const prev = prevStocks[row.sku]
@@ -293,9 +296,11 @@ function stepLog(index, session) {
     case 4:
       return plan ? `Merge plan ready · dry run ${plan.dry_run_ok ? 'passed' : 'FAILED'}` : ''
     case 5:
+      if (!plan) return ''
       if (!patch) return 'No code fix requested'
       return patch.found ? `Root cause: ${patch.incident_sql}` : 'No offending statement found in the source'
     case 6: {
+      if (!plan) return ''
       const tests = patch?.tests || []
       if (!patch || !tests.length) return 'Skipped'
       return `${tests.filter((t) => t.ok).length}/${tests.length} patch tests passed on a throwaway clone`
@@ -312,6 +317,13 @@ function stepLog(index, session) {
 export function stepsFromSession(session) {
   const running = RUNNING_STEPS[session.phase]
   const lastEvent = session.events?.at(-1)?.msg || ''
+  if (session.phase === 'error') {
+    // Only steps that produced data finished; do not show the rest as done.
+    return Array.from({ length: STEP_COUNT }, (_, index) => {
+      const log = stepLog(index, session)
+      return { stepIndex: index, status: log ? 'done' : 'pending', log }
+    })
+  }
   return Array.from({ length: STEP_COUNT }, (_, index) => {
     if (!running) return { stepIndex: index, status: 'done', log: stepLog(index, session) }
     if (index < running[0]) return { stepIndex: index, status: 'done', log: stepLog(index, session) }

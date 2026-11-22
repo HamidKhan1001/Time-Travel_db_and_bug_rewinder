@@ -11,7 +11,7 @@ This document describes the Task 3 Database Recovery Engine in `timetravel/recov
 - **FK-aware recovery**: inspects foreign keys, builds dependency edges, orders steps safely, and detects FK conflicts (`dependencies.py`, `integrity.py`).
 - **Checksum verification**: SHA-256 row-level comparison over the configured business tables; mismatch blocks success (`verification.py`).
 - **Two crash scenarios**: the inventory stock wipe uses the agent HITL workflow; the orders status wipe uses this engine directly through `tests/setup_second_crash.py` and `tests/run_second_crash.py`.
-- **Benchmark scripts**: reproducible local SQLite benchmarks in `benchmarks/`. Preserved measurements are listed in [`BENCHMARK_REPORT.md`](BENCHMARK_REPORT.md) and [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md).
+- **Benchmark scripts**: reproducible local SQLite benchmarks in `benchmarks/`. Preserved measurements are listed in [`BENCHMARK_REPORT.md`](BENCHMARK_REPORT.md) and [`docs/PERFORMANCE.md`](PERFORMANCE.md).
 
 ## Key modules
 
@@ -31,7 +31,7 @@ This document describes the Task 3 Database Recovery Engine in `timetravel/recov
 - Existing API contracts were preserved; no routes were renamed or removed.
 - `timetravel/recovery/` is additive.
 - The legacy demo flow (`server.py` → `agent.py` → `tools.py`) still uses the HITL approval gate at `/api/rewind` and `/api/session/<id>/approve`.
-- `final_recovery_demo.py` also uses the agent HITL gate and then performs separate business-table checksum verification.
+- `scripts/final_recovery_demo.py` also uses the agent HITL gate and then performs separate business-table checksum verification.
 - The second crash scripts and benchmarks call `recovery_engine.create_plan()` / `execute_plan()` directly; they do not use HTTP approval.
 
 ## Safety model
@@ -52,7 +52,7 @@ python3 tests/setup_second_crash.py --dir "$tmpdir"
 python3 tests/run_second_crash.py --dir "$tmpdir"
 ```
 
-`tests/e2e.py`, `reset.py`, `/api/demo/reset`, and `final_recovery_demo.py` can modify repository demo state. Prefer the isolated E2E runner when preserving repository files matters.
+`tests/e2e.py`, `reset.py`, `/api/demo/reset`, and `scripts/final_recovery_demo.py` can modify repository demo state. Prefer the isolated E2E runner when preserving repository files matters.
 
 ## Benchmark commands
 

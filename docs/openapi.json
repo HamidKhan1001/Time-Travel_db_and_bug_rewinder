@@ -1,0 +1,771 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Time-Travel DB API",
+    "version": "0.2.0",
+    "description": "Local demo API. Optional bearer token via TT_API_TOKEN (every /api route except /api/health). POSTs with a non-local Origin header are rejected with 403. Responses carry X-Request-Id."
+  },
+  "servers": [
+    {
+      "url": "http://127.0.0.1:8000"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "string"
+          }
+        }
+      },
+      "Health": {
+        "type": "object",
+        "required": [
+          "status",
+          "version",
+          "uptime_seconds",
+          "database",
+          "auth"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "degraded"
+            ]
+          },
+          "version": {
+            "type": "string"
+          },
+          "uptime_seconds": {
+            "type": "number"
+          },
+          "database": {
+            "type": "string"
+          },
+          "llm_provider": {
+            "type": "string"
+          },
+          "auth": {
+            "type": "string",
+            "enum": [
+              "open",
+              "token"
+            ]
+          }
+        }
+      },
+      "State": {
+        "type": "object",
+        "required": [
+          "now",
+          "inventory",
+          "orders",
+          "incident",
+          "order_dots",
+          "patched",
+          "warm"
+        ],
+        "properties": {
+          "now": {
+            "type": "number"
+          },
+          "inventory": {
+            "type": "object",
+            "required": [
+              "skus",
+              "units",
+              "zero",
+              "sample"
+            ]
+          },
+          "orders": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "incident": {
+            "type": "object",
+            "nullable": true
+          },
+          "order_dots": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "patched": {
+            "type": "boolean"
+          },
+          "warm": {
+            "type": "object"
+          }
+        }
+      },
+      "Session": {
+        "type": "object",
+        "required": [
+          "id",
+          "prompt",
+          "phase",
+          "events",
+          "can_approve",
+          "can_undo",
+          "timings"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "phase": {
+            "type": "string",
+            "enum": [
+              "starting",
+              "parsing",
+              "branching",
+              "extracting_delta",
+              "planning",
+              "diagnosing",
+              "awaiting_approval",
+              "applying",
+              "applied",
+              "undone",
+              "discarded",
+              "error"
+            ]
+          }
+        }
+      },
+      "AuditEntry": {
+        "type": "object",
+        "required": [
+          "id",
+          "status",
+          "startedAt",
+          "scenario",
+          "prompt"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "applied",
+              "undone",
+              "discarded",
+              "failed"
+            ]
+          }
+        }
+      },
+      "AuditList": {
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "pageSize"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AuditEntry"
+            }
+          }
+        }
+      },
+      "AuditSummary": {
+        "type": "object",
+        "required": [
+          "totalRecoveries",
+          "today",
+          "successRate",
+          "targetSuccessRate"
+        ]
+      }
+    }
+  },
+  "security": [
+    {
+      "bearer": []
+    }
+  ],
+  "paths": {
+    "/api/health": {
+      "get": {
+        "summary": "Liveness and DB check (never requires auth)",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/state": {
+      "get": {
+        "summary": "Live inventory, recent orders, incident and patch state",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/State"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/orders": {
+      "post": {
+        "summary": "Place an idempotent order",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "customer_id": {
+                    "type": "integer"
+                  },
+                  "idem_key": {
+                    "type": "string"
+                  },
+                  "items": {
+                    "type": "array",
+                    "items": {
+                      "type": "object"
+                    }
+                  }
+                },
+                "required": [
+                  "customer_id",
+                  "items"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Order placed or duplicate"
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/sync-stock": {
+      "post": {
+        "summary": "Warehouse sync handler (buggy until patched)",
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "sku": {
+                    "type": "string"
+                  },
+                  "stock": {
+                    "type": "integer"
+                  }
+                },
+                "required": []
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "{updated_rows}"
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/demo/reset": {
+      "post": {
+        "summary": "Destructive: reset demo DB, code and audit history",
+        "responses": {
+          "200": {
+            "description": "{ok:true}"
+          }
+        }
+      }
+    },
+    "/api/demo/crash": {
+      "post": {
+        "summary": "Trigger the warehouse-sync crash",
+        "responses": {
+          "200": {
+            "description": "{updated_rows}"
+          }
+        }
+      }
+    },
+    "/api/demo/orders": {
+      "post": {
+        "summary": "Place demo orders #1041-#1043",
+        "responses": {
+          "200": {
+            "description": "{orders}"
+          }
+        }
+      }
+    },
+    "/api/rewind": {
+      "post": {
+        "summary": "Start a recovery session (asynchronous)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "prompt": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "prompt"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "{id}"
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/session/{id}": {
+      "get": {
+        "summary": "Full session state (poll this for progress)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^INC-[A-Z0-9]+$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/session/{id}/approve": {
+      "post": {
+        "summary": "Approve and apply a plan awaiting approval",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^INC-[A-Z0-9]+$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Session in phase applied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Not awaiting approval or apply failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/session/{id}/discard": {
+      "post": {
+        "summary": "Reject a plan awaiting approval; data is untouched",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^INC-[A-Z0-9]+$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Session in phase discarded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Not awaiting approval",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/session/{id}/undo": {
+      "post": {
+        "summary": "Restore the pre-recovery snapshot and code",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^INC-[A-Z0-9]+$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Session in phase undone",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Nothing to undo",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/session/{id}/audit": {
+      "get": {
+        "summary": "Durable audit events for one session",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^INC-[A-Z0-9]+$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "{session_id, events}"
+          },
+          "404": {
+            "description": "No audit history",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/session/{id}/events": {
+      "get": {
+        "summary": "Server-Sent Events stream of audit events",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^INC-[A-Z0-9]+$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "text/event-stream"
+          },
+          "400": {
+            "description": "Bad id",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/audit": {
+      "get": {
+        "summary": "Finished recoveries, newest first",
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "scenario",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad paging",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/audit/summary": {
+      "get": {
+        "summary": "KPIs for the audit page",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditSummary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/audit/{id}": {
+      "get": {
+        "summary": "One finished recovery",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^INC-[A-Z0-9]+$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditEntry"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

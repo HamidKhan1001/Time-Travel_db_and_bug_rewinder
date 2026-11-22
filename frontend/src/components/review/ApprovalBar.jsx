@@ -4,8 +4,8 @@ import { PingDot } from '../ui/Pill.jsx'
 
 /** Sticky action bar at the bottom of the Review screen. */
 export default function ApprovalBar({ live, plan, applied, onApprove, onDiscard, onUndo, onBack, pending }) {
-  // With no code patch, the clone dry run of the merge is what must pass.
-  const verified = plan.patch ? Boolean(plan.patch.verification?.passed) : plan.dryRunOk !== false
+  // The merge dry run on the clone must pass, and so must the patch when there is one.
+  const verified = plan.dryRunOk !== false && (!plan.patch || Boolean(plan.patch.verification?.passed))
   return (
     <div className="fixed bottom-0 left-0 w-full bg-white/90 backdrop-blur-xl border-t border-slate-200/90 px-4 sm:px-6 py-3 sm:py-3.5 z-40 shadow-2xl">
       <div className="max-w-[1600px] mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-3">
