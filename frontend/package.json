@@ -10,7 +10,7 @@
     "build": "vite build",
     "build:live": "vite build --mode live",
     "preview": "vite preview",
-    "test": "node --test src/services/adapters.test.js",
+    "test": "node --test src/services/adapters.test.js src/services/httpClient.test.js",
     "lint": "eslint .",
     "test:e2e": "npm run build:live && playwright test"
   },

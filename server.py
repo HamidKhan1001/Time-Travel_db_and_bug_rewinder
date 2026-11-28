@@ -6,19 +6,22 @@ import os
 import re
 import select
 import socket
+import sqlite3
 import threading
 import time
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlsplit
 
-from timetravel import __version__, agent, appcode, audit, db, seed, sse, tools
+from timetravel import __version__, agent, appcode, audit, config, db, seed, sse, tools
+from timetravel.ratelimit import Decision, RateLimiter
 
+cfg = config.load()          # every tunable comes from here (see timetravel/config.py); invalid values fail at startup
 log = logging.getLogger("timetravel.http")
 STARTED_AT = time.time()
 
 WARM = {"ms": None, "at": None}
-SHOW = ["APX-0007", "APX-0042", "APX-0100", "APX-0555", "APX-0777"]
+SHOW = ["APX-0007", "APX-0042", "APX-0100", "APX-0555", "APX-0777"]      # SKUs the dashboard displays
 APP_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "frontend", "dist")   # built React app (npm run build)
 MIME = {".html": "text/html; charset=utf-8", ".js": "application/javascript; charset=utf-8",
         ".css": "text/css; charset=utf-8", ".svg": "image/svg+xml", ".png": "image/png",
@@ -27,17 +30,30 @@ MIME = {".html": "text/html; charset=utf-8", ".js": "application/javascript; cha
 PATCHED_MARK = "UPDATE inventory SET stock = ? WHERE sku = ?"
 LOCAL_ORIGIN = re.compile(r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$")
 
-MAX_BODY_BYTES = int(os.getenv("TT_MAX_BODY_BYTES", str(1024 * 1024)))      # reject bigger POST bodies with 413
-REQUEST_TIMEOUT = float(os.getenv("TT_REQUEST_TIMEOUT", "30"))              # slow or stalled clients are dropped
-MAX_SSE_STREAMS = int(os.getenv("TT_MAX_SSE_STREAMS", "32"))                # each stream pins a server thread
-CHANGELOG_MAX_ROWS = int(os.getenv("TT_CHANGELOG_MAX_ROWS", "500000"))      # 0 keeps everything
-PRUNE_EVERY_TICKS = 150                                                     # warm_loop ticks (4s each) = 10 min
+MAX_BODY_BYTES = cfg.max_body_bytes          # reject bigger POST bodies with 413
+REQUEST_TIMEOUT = cfg.request_timeout        # slow or stalled clients are dropped
+MAX_SSE_STREAMS = cfg.max_sse_streams        # each stream pins a server thread
+CHANGELOG_MAX_ROWS = cfg.changelog_max_rows  # 0 keeps everything
+PRUNE_EVERY_TICKS = 150                      # warm_loop ticks (4s each) = 10 min
 SSE_SLOTS = threading.BoundedSemaphore(MAX_SSE_STREAMS)
 
 
 def api_token():
     """Optional shared secret. Unset means open (fine for localhost demos); set it before exposing the port."""
-    return os.getenv("TT_API_TOKEN", "")
+    return os.getenv("TT_API_TOKEN", cfg.api_token)
+
+
+def build_limiters():
+    """One limiter per traffic class. Reads are cheap and frequent (UI polling); writes start recoveries."""
+    return {
+        "read": RateLimiter(cfg.rate_read_per_minute, cfg.rate_read_burst),
+        "write": RateLimiter(cfg.rate_write_per_minute, cfg.rate_write_burst),
+        "auth": RateLimiter(cfg.rate_auth_fail_per_minute, max(1, cfg.rate_auth_fail_per_minute)),
+    }
+
+
+LIMITERS = build_limiters()
+RATE_LIMIT_ENABLED = cfg.rate_limit_enabled
 
 
 def authorized(headers):
@@ -152,10 +168,12 @@ def post(path, body):
                 return appcode.fn("sync_stock")(c, body)
             finally:
                 c.close()
+    if path.partition("/api/")[2].startswith("demo/") and not cfg.demo_routes:
+        raise NotFound(f"unknown route {path}")                  # TT_DEMO_ROUTES=0 hides the destructive demo helpers
     if path == "/api/demo/reset":
         agent.SESSIONS.clear(); seed.reset(); return {"ok": True}
     if path == "/api/demo/crash":     # the warehouse feed marks ONE sku sold out -> buggy handler wipes all
-        return post("/api/admin/sync-stock", {"sku": "APX-0007", "stock": 0})
+        return post("/api/admin/sync-stock", {"sku": cfg.demo_crash_sku, "stock": 0})
     if path == "/api/demo/orders":
         return {"orders": seed.demo_orders()}
     if path == "/api/rewind":
@@ -190,6 +208,7 @@ class H(BaseHTTPRequestHandler):
 
     def _begin(self):
         self._t0 = time.perf_counter()
+        self._rate_headers = {}
         incoming = self.headers.get("X-Request-Id", "")
         self._rid = incoming if re.fullmatch(r"[A-Za-z0-9._-]{1,64}", incoming) else uuid.uuid4().hex[:12]
 
@@ -202,21 +221,58 @@ class H(BaseHTTPRequestHandler):
         except (OSError, ValueError):
             return True
 
+    def _origin_allowed(self, origin):
+        """CORS allow-list: TT_ALLOWED_ORIGINS when set, otherwise only local dev servers."""
+        if cfg.allowed_origins:
+            return origin.rstrip("/") in cfg.allowed_origins
+        return bool(LOCAL_ORIGIN.match(origin))
+
+    def _same_origin(self, origin):
+        """True when the page that made the request was served by this very server (Origin host == Host)."""
+        host = (self.headers.get("Host") or "").lower()
+        return bool(host) and urlsplit(origin).netloc.lower() == host
+
     def _cors(self):
-        """Allow the React dev server (any localhost port) to call the API directly. Other origins get nothing."""
+        """Let allow-listed origins call the API from the browser. Other origins get no CORS headers."""
         origin = self.headers.get("Origin", "")
-        if LOCAL_ORIGIN.match(origin):
+        if origin and self._origin_allowed(origin):
             self.send_header("Access-Control-Allow-Origin", origin)
             self.send_header("Vary", "Origin")
             self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
             self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization, Last-Event-ID, X-Request-Id")
-            self.send_header("Access-Control-Expose-Headers", "X-Request-Id")
+            self.send_header("Access-Control-Expose-Headers",
+                             "X-Request-Id, Retry-After, X-RateLimit-Limit, X-RateLimit-Remaining")
 
-    def _send(self, code, body, ctype="application/json"):
+    def end_headers(self):
+        """Security headers on every response, including redirects, errors and event streams."""
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("X-Frame-Options", "DENY")
+        self.send_header("Referrer-Policy", "no-referrer")
+        self.send_header("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+        self.send_header("Cross-Origin-Opener-Policy", "same-origin")
+        if cfg.csp:
+            self.send_header("Content-Security-Policy", cfg.csp)
+        super().end_headers()
+
+    def client_ip(self):
+        """The address rate limits are keyed on. X-Forwarded-For is only believed behind a proxy you control
+        (TT_TRUST_PROXY=1); we take its right-most entry, the one our own proxy appended, because the left-hand
+        entries are client-supplied and trivially spoofed."""
+        if cfg.trust_proxy:
+            forwarded = [p.strip() for p in (self.headers.get("X-Forwarded-For") or "").split(",") if p.strip()]
+            if forwarded:
+                return forwarded[-1]
+        return self.client_address[0]
+
+    def _send(self, code, body, ctype="application/json", extra_headers=None):
         data = body if isinstance(body, bytes) else json.dumps(body).encode()
         self.send_response(code)
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(data)))
+        if urlsplit(self.path).path.startswith("/api/"):
+            self.send_header("Cache-Control", "no-store")       # live state must never come from a cache
+        for name, value in {**getattr(self, "_rate_headers", {}), **(extra_headers or {})}.items():
+            self.send_header(name, str(value))
         rid = getattr(self, "_rid", None)
         if rid:
             self.send_header("X-Request-Id", rid)
@@ -227,15 +283,74 @@ class H(BaseHTTPRequestHandler):
             ms = (time.perf_counter() - self._t0) * 1000
             log.info("request_id=%s method=%s path=%s status=%s ms=%.1f", rid, self.command, urlsplit(self.path).path, code, ms)
 
-    def _deny_unless_authorized(self):
-        """401 for /api/* when TT_API_TOKEN is set (health is always open). Returns True if the request was rejected."""
-        path = urlsplit(self.path).path
-        if path.startswith("/api/") and path != "/api/health" and not authorized(self.headers):
-            self._send(401, {"error": "missing or invalid bearer token"})
+    def _error(self, status, code, message, headers=None):
+        """Every error body has the same shape: {"error": human message, "code": MACHINE_CODE, "request_id": id}."""
+        self._send(status, {"error": message, "code": code, "request_id": getattr(self, "_rid", None)},
+                   extra_headers=headers)
+
+    def _host_ok(self):
+        """Refuse unexpected Host headers (DNS-rebinding defence). Automatic only while bound to loopback."""
+        allowed = set(cfg.allowed_hosts)
+        if not allowed and cfg.host in config.LOOPBACK_HOSTS:
+            allowed = {"localhost", "127.0.0.1", "::1"}
+        if not allowed:
             return True
+        host = (self.headers.get("Host") or "").strip().lower()
+        if host.startswith("["):                                  # [::1]:8000
+            host = host[1:].split("]")[0]
+        elif host.count(":") == 1:
+            host = host.split(":")[0]
+        return host in allowed
+
+    def _rate_limit(self, path):
+        """Charge the request to the client's read or write bucket. Returns (rejected, headers to attach)."""
+        if not RATE_LIMIT_ENABLED or not path.startswith("/api/") or path == "/api/health":
+            return False, {}
+        bucket = "write" if self.command == "POST" else "read"
+        decision = LIMITERS[bucket].check(self.client_ip())
+        headers = {"X-RateLimit-Limit": decision.limit, "X-RateLimit-Remaining": decision.remaining}
+        if not decision.allowed:
+            log.warning("request_id=%s rate limited ip=%s bucket=%s", self._rid, self.client_ip(), bucket)
+            self._error(429, "RATE_LIMITED", f"Too many requests. Retry in {decision.retry_after}s.",
+                        {**headers, "Retry-After": decision.retry_after})
+            return True, headers
+        return False, headers
+
+    def _deny_unless_authorized(self):
+        """401 for /api/* when TT_API_TOKEN is set (health is always open). Returns True if the request was rejected.
+        Repeated failures from one address are locked out (429) before the token is even compared."""
+        path = urlsplit(self.path).path
+        if not path.startswith("/api/") or path == "/api/health" or authorized(self.headers):
+            return False
+        limiter = LIMITERS["auth"]
+        locked = limiter.blocked(self.client_ip()) if RATE_LIMIT_ENABLED else Decision(True, 0, 0, 0)
+        if not locked.allowed:
+            self._error(429, "RATE_LIMITED", f"Too many failed attempts. Retry in {locked.retry_after}s.",
+                        {"Retry-After": locked.retry_after})
+            return True
+        if RATE_LIMIT_ENABLED:
+            limiter.check(self.client_ip())                      # spend a token: this attempt failed
+        self._error(401, "UNAUTHORIZED", "missing or invalid bearer token", {"WWW-Authenticate": "Bearer"})
+        return True
+
+    def _gate(self):
+        """Checks every request passes before routing: Host header, rate limit, authentication.
+        Returns True when the request was already answered (rejected)."""
+        path = urlsplit(self.path).path
+        if not self._host_ok():
+            self._error(421, "BAD_HOST", "unexpected Host header")
+            return True
+        if self.command != "OPTIONS":
+            if self._deny_unless_authorized():
+                return True
+            rejected, self._rate_headers = self._rate_limit(path)
+            return rejected
         return False
 
     def do_OPTIONS(self):
+        self._begin()
+        if not self._host_ok():
+            return self._error(421, "BAD_HOST", "unexpected Host header")
         self.send_response(204)
         self._cors()
         self.send_header("Content-Length", "0")
@@ -245,7 +360,7 @@ class H(BaseHTTPRequestHandler):
         """Serve the built React app under /app/, falling back to index.html for client-side routes."""
         index = os.path.join(APP_DIR, "index.html")
         if not os.path.exists(index):
-            return self._send(404, {"error": "React app is not built. Run: cd frontend && npm install && npm run build:live"})
+            return self._error(404, "NOT_FOUND", "React app is not built. Run: cd frontend && npm install && npm run build:live")
         rel = url_path[len("/app"):].lstrip("/")
         target = os.path.realpath(os.path.join(APP_DIR, rel))
         root = os.path.realpath(APP_DIR)
@@ -253,7 +368,7 @@ class H(BaseHTTPRequestHandler):
             with open(target, "rb") as handle:
                 return self._send(200, handle.read(), MIME.get(os.path.splitext(target)[1], "application/octet-stream"))
         if os.path.splitext(rel)[1]:     # a missing asset is a real 404, not the app shell
-            return self._send(404, {"error": "not found"})
+            return self._error(404, "NOT_FOUND", "not found")
         with open(index, "rb") as handle:
             return self._send(200, handle.read(), MIME[".html"])
 
@@ -273,7 +388,7 @@ class H(BaseHTTPRequestHandler):
                 page = max(1, int(one("page", "1")))
                 size = min(100, max(1, int(one("pageSize", "5"))))
             except ValueError:
-                return self._send(400, {"error": "page and pageSize must be integers"})
+                return self._error(400, "BAD_REQUEST", "page and pageSize must be integers")
             rows = audit.filter_recoveries(entries, one("search"), one("status"), one("scenario"))
             start = (page - 1) * size
             return self._send(200, {"items": rows[start:start + size], "total": len(rows), "page": page, "pageSize": size})
@@ -281,12 +396,12 @@ class H(BaseHTTPRequestHandler):
         for e in entries:
             if e["id"] == sid:
                 return self._send(200, e)
-        return self._send(404, {"error": "recovery not found"})
+        return self._error(404, "NOT_FOUND", "recovery not found")
 
     def do_GET(self):
         self._begin()
         try:
-            if self._deny_unless_authorized():
+            if self._gate():
                 return
             if self.path == "/api/health":
                 return self._send(200, health())
@@ -322,30 +437,22 @@ class H(BaseHTTPRequestHandler):
                 parts = parsed.path.strip("/").split("/")
                 sid = parts[2] if len(parts) > 2 else ""
                 if not sse.validate_session_id(sid):
-                    return self._send(400, {"error": "invalid session id"})
+                    return self._error(400, "BAD_REQUEST", "invalid session id")
                 try:
                     header_id = self.headers.get("Last-Event-ID")
                     query_id = parse_qs(parsed.query).get("last_event_id", [None])[0]
                     after_id = sse.parse_last_event_id(header_id if header_id is not None else query_id)
                 except ValueError as error:
-                    return self._send(400, {"error": str(error)})
+                    return self._error(400, "BAD_REQUEST", str(error))
                 try:
                     historical = sse.read_events_after(sid, after_id)
                 except Exception:
                     log.exception("request_id=%s could not read audit history for %s", self._rid, sid)
-                    return self._send(500, {"error": "audit stream unavailable"})
+                    return self._error(500, "INTERNAL", "audit stream unavailable")
                 if not historical and sid not in agent.SESSIONS:
-                    return self._send(404, {"error": "session or audit history not found"})
+                    return self._error(404, "NOT_FOUND", "session or audit history not found")
                 if not SSE_SLOTS.acquire(blocking=False):
-                    body = json.dumps({"error": "too many open event streams, retry shortly"}).encode()
-                    self.send_response(503)
-                    self.send_header("Retry-After", "5")
-                    self.send_header("Content-Type", "application/json")
-                    self.send_header("Content-Length", str(len(body)))
-                    self._cors()
-                    self.end_headers()
-                    self.wfile.write(body)
-                    return
+                    return self._error(503, "BUSY", "too many open event streams, retry shortly", {"Retry-After": 5})
 
                 self.send_response(200)
                 self.send_header("Content-Type", "text/event-stream; charset=utf-8")
@@ -370,19 +477,19 @@ class H(BaseHTTPRequestHandler):
                 sid = parsed.path.split("/")[3]
                 events = agent.audit_events(sid)
                 if not events:
-                    return self._send(404, {"error": "audit history not found"})
+                    return self._error(404, "NOT_FOUND", "audit history not found")
                 return self._send(200, {"session_id": sid, "events": events})
 
             if parsed.path.startswith("/api/session/"):
                 sid = parsed.path.split("/")[3]
                 if sid not in agent.SESSIONS:
-                    return self._send(404, {"error": "session not found"})
+                    return self._error(404, "NOT_FOUND", "session not found")
                 return self._send(200, agent.SESSIONS[sid].to_json())
 
-            self._send(404, {"error": "not found"})
+            self._error(404, "NOT_FOUND", "not found")
         except Exception:
             log.exception("request_id=%s unhandled error on GET %s", self._rid, self.path)
-            self._send(500, {"error": "internal error", "request_id": self._rid})
+            self._error(500, "INTERNAL", "internal error")
 
     def _read_json_body(self):
         """Read and validate the POST body: bounded size, valid JSON, and a JSON object."""
@@ -403,25 +510,30 @@ class H(BaseHTTPRequestHandler):
     def do_POST(self):
         self._begin()
         try:
-            if self._deny_unless_authorized():
+            if self._gate():
                 return
             origin = self.headers.get("Origin")
-            if origin and not LOCAL_ORIGIN.match(origin):      # a web page on another site must not drive this API
-                return self._send(403, {"error": "cross-origin requests are not allowed"})
+            # a web page on another site must not drive this API; the app served by this server itself may
+            if origin and not (self._origin_allowed(origin) or self._same_origin(origin)):
+                return self._error(403, "FORBIDDEN_ORIGIN", "cross-origin requests are not allowed")
             body = self._read_json_body()
             self._send(200, post(self.path, body))
         except BadRequest as e:
-            self._send(e.status, {"error": str(e)})
+            self._error(e.status, "PAYLOAD_TOO_LARGE" if e.status == 413 else "BAD_REQUEST", str(e))
         except NotFound as e:
-            self._send(404, {"error": e.args[0]})
+            self._error(404, "NOT_FOUND", e.args[0])
         except KeyError as e:
-            self._send(400, {"error": f"missing field {e}"})
-        except Exception as e:
-            self._send(400, {"error": str(e)})
+            self._error(400, "BAD_REQUEST", f"missing field {e}")
+        except sqlite3.OperationalError:        # locked / busy / disk problems are the server's, not the client's
+            log.exception("request_id=%s database unavailable on POST %s", self._rid, self.path)
+            self._error(503, "DB_BUSY", "database is busy, retry shortly", {"Retry-After": 2})
+        except Exception as e:                        # handler-level validation errors carry a message the UI shows
+            log.warning("request_id=%s POST %s rejected: %s", self._rid, self.path, e)
+            self._error(400, "BAD_REQUEST", str(e))
 
 
 def main():
-    logging.basicConfig(level=os.getenv("TT_LOG_LEVEL", "INFO").upper(),
+    logging.basicConfig(level=cfg.log_level,
                         format="%(asctime)s %(levelname)s %(name)s %(message)s")
     if not os.path.exists(db.LIVE):
         seed.reset()
@@ -433,10 +545,13 @@ def main():
         finally:
             c.close()
     threading.Thread(target=warm_loop, daemon=True).start()
-    host = os.getenv("HOST", "127.0.0.1")        # keep loopback unless you set a token and put it behind TLS
-    port = int(os.getenv("PORT", "8000"))
-    if host not in ("127.0.0.1", "localhost", "::1") and not api_token():
+    host, port = cfg.host, cfg.port        # keep loopback unless you set a token and put it behind TLS
+    if host not in config.LOOPBACK_HOSTS and not api_token():
         log.warning("listening on %s with no TT_API_TOKEN set: anyone who can reach the port can reset or rewrite the DB", host)
+    if host not in config.LOOPBACK_HOSTS and cfg.demo_routes:
+        log.warning("demo routes (/api/demo/*, including reset) are enabled on a public address; set TT_DEMO_ROUTES=0 to hide them")
+    if cfg.trust_proxy:
+        log.info("TT_TRUST_PROXY on: rate limits use the right-most X-Forwarded-For entry")
     print(f"Mission Control on http://{host}:{port}")
     ThreadingHTTPServer((host, port), H).serve_forever()
 
