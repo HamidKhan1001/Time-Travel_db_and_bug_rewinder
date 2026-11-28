@@ -1,4 +1,5 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import ErrorBoundary from '../components/ui/ErrorBoundary.jsx'
 import { ToastProvider } from '../context/ToastContext.jsx'
 import { DemoProvider } from '../context/DemoContext.jsx'
 import AppLayout from '../components/layout/AppLayout.jsx'
@@ -16,6 +17,7 @@ import NotFoundPage from '../pages/NotFoundPage.jsx'
 export default function App() {
   return (
     <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, '')}>
+      <ErrorBoundary>
       <ToastProvider>
         <DemoProvider>
           <Routes>
@@ -29,6 +31,7 @@ export default function App() {
           </Routes>
         </DemoProvider>
       </ToastProvider>
+      </ErrorBoundary>
     </BrowserRouter>
   )
 }

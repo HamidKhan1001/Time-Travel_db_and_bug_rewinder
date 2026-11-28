@@ -4,12 +4,12 @@ import threading
 import time
 import uuid
 
-from . import audit, db, llm, recovery_projection, tools
+from . import audit, config, db, llm, recovery_projection, tools
 
-PACE = float(os.getenv("TT_PACE", "0.4"))     # tiny pause between steps so the feed is readable on stage
+PACE = config.load().pace     # tiny pause between steps so the feed is readable on stage (TT_PACE)
 SESSIONS: dict[str, "Session"] = {}
 _monotonic = time.perf_counter
-MAX_SESSIONS = int(os.getenv("TT_MAX_SESSIONS", "200"))
+MAX_SESSIONS = config.load().max_sessions
 _IN_FLIGHT = {"starting", "parsing", "branching", "extracting_delta", "planning", "diagnosing",
               "awaiting_approval", "applying"}
 

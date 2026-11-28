@@ -5,8 +5,10 @@ import sqlite3
 import threading
 import time
 
-BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DATA = os.path.join(BASE, "data")
+from . import config
+
+BASE = config.BASE_DIR
+DATA = config.load().data_dir          # TT_DATA_DIR overrides the default ./data
 LIVE = os.path.join(DATA, "live.db")
 LOCK = threading.RLock()
 

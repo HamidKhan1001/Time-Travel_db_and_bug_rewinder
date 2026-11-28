@@ -3,6 +3,7 @@
  * Keeps the small amount of client-side state the API does not provide (last action,
  * previous stock levels, the local change-log entries for recoveries).
  */
+import { POLL_INTERVAL_MS as POLL_MS, RECOVERY_MAX_WAIT_MS as MAX_WAIT_MS } from './config.js'
 import { request } from './httpClient.js'
 import { ApiError } from './errors.js'
 import {
@@ -16,8 +17,6 @@ import {
   toSnapshot,
 } from './adapters.js'
 
-const POLL_MS = 350
-const MAX_WAIT_MS = 120_000
 
 const memory = {
   prevStocks: {},

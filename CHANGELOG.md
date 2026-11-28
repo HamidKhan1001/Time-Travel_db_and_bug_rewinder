@@ -15,6 +15,16 @@ All notable changes. Format based on [Keep a Changelog](https://keepachangelog.c
 - Architecture document with diagrams and six ADRs; `CONTRIBUTING.md`, `SECURITY.md`, `CODEOWNERS`, PR template, Dependabot.
 - `pyproject.toml` with extras (`gemini`, `bedrock`, `ai`, `dev`).
 
+### Added (security, rate limiting, QA)
+- Rate limiting (token bucket per client address): separate read and write buckets, `429` with `Retry-After` and `X-RateLimit-*` headers, failed-auth lockout, health and static files exempt. All limits are configurable.
+- Security headers on every response (CSP, `nosniff`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, COOP), `Cache-Control: no-store` on the API, `WWW-Authenticate` on 401.
+- Host-header allow-list (DNS-rebinding defence), configurable CORS/origin allow-list, optional `TT_DEMO_ROUTES=0`.
+- `timetravel/config.py`: one validated place for every setting (fails fast, names the bad variable); data dir, allowed origins/hosts, demo SKU and limits are no longer hardcoded.
+- Every API error now has `{error, code, request_id}`; database lock/busy errors are `503 DB_BUSY` with `Retry-After`, not a client `400`.
+- Frontend API client: per-request timeout, retries for GET only (backoff, honours `Retry-After`), stable error codes (`TIMEOUT`, `NETWORK_ERROR`, `RATE_LIMITED`, `UNAUTHORIZED`, `INVALID_RESPONSE` ...), request id in 5xx messages. Writes are never retried.
+- React `ErrorBoundary`: a render error shows a recoverable message instead of a blank page.
+- E2E QA suites (`frontend/e2e/qa.spec.js`, `ratelimit.spec.js`): security headers, CSP with no violations, origin/host checks, error shapes, path traversal, UI behaviour when the API returns 429/500/non-JSON or is unreachable, and real rate limiting against a second tightly limited server.
+
 ### Added (hardening and durability)
 - POST bodies are capped (`413`), must be a JSON object, and a bad `Content-Length` is `400`. Stalled clients time out.
 - `/api/.../events` streams are capped (`503` + `Retry-After` when full); the slot is always released.
@@ -29,6 +39,8 @@ All notable changes. Format based on [Keep a Changelog](https://keepachangelog.c
 - `IntentResult.preserve` from the fallback parser is now a tuple, as declared.
 
 ### Fixed
+- Browser `POST`s from the app were refused with 403 whenever it was served from a real domain (only `localhost` origins were accepted). Same-origin requests are now allowed.
+- A request whose abort signal had already fired still reached the network; a non-JSON `200` (wrong host, SPA fallback) was silently treated as `null`.
 - Unhandled errors return `{"error":"internal error","request_id":...}` and log the traceback instead of leaking `str(exception)`.
 - The warm-up thread no longer holds the global DB lock (API requests no longer queue behind it) and logs failures instead of swallowing them.
 - The live DB uses SQLite WAL mode (readers no longer block on writers). `seed.reset()` also deletes `-wal`/`-shm` files so a stale one cannot corrupt a fresh database.

@@ -100,6 +100,17 @@ docs/                  architecture, ADRs, OpenAPI spec, evidence and analysis n
 | `TT_MAX_SSE_STREAMS` | `32` | Concurrent `/events` streams. Over the cap returns `503` with `Retry-After`. |
 | `TT_MAX_SESSIONS` | `200` | In-memory sessions kept. Finished ones are evicted first; running ones never are. Audit history stays in the DB. |
 | `TT_CHANGELOG_MAX_ROWS` | `500000` | Newest legacy changelog rows kept (pruned every 10 min). `0` keeps everything. Rewinding past the oldest kept row is not possible. |
+| `TT_RATE_LIMIT` | `1` | Master switch for rate limiting (`0` turns it off). |
+| `TT_RATE_READ_PER_MIN` / `TT_RATE_READ_BURST` | `600` / `120` | Reads per client address: sustained rate and the burst allowed at once. Over the limit: `429` + `Retry-After`. |
+| `TT_RATE_WRITE_PER_MIN` / `TT_RATE_WRITE_BURST` | `60` / `20` | Same for `POST` (starting, approving, undoing recoveries). |
+| `TT_RATE_AUTH_FAIL_PER_MIN` | `10` | Failed token attempts per address before it is locked out (`429`) until the bucket refills. |
+| `TT_TRUST_PROXY` | `0` | Believe `X-Forwarded-For` (right-most entry) for rate limiting. Only enable behind a proxy you control. |
+| `TT_ALLOWED_ORIGINS` | unset | Comma-separated exact origins allowed for CORS and cross-origin `POST`. Unset = local dev servers only. The app served by this server can always call it. |
+| `TT_ALLOWED_HOSTS` | unset | Accepted `Host` names. Unset = automatic: loopback names only while bound to a loopback address (DNS-rebinding defence). |
+| `TT_CSP` | built-in policy | Content-Security-Policy header. Empty disables it. |
+| `TT_DEMO_ROUTES` | `1` | `0` hides `/api/demo/*` (reset, crash, orders). Turn off on anything public. |
+| `TT_DEMO_SKU` | `APX-0007` | SKU the demo "warehouse sync" marks sold out. |
+| `TT_DATA_DIR` | `./data` | Where the SQLite files live. |
 | `TT_PACE` | `0.4` | Seconds between agent steps so the demo feed is readable. `0` for tests. |
 | `TT_LLM_PROVIDER` | `gemini` | `gemini` or `bedrock`. Without credentials the rule-based parser is used. |
 | `GEMINI_API_KEY`, `TT_LLM_MODEL`, `TT_BEDROCK_REGION`, `TT_BEDROCK_MODEL` | | Provider settings. See [docs/ai-setup.md](docs/ai-setup.md). |
