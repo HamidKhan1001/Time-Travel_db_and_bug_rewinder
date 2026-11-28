@@ -10,8 +10,9 @@ import difflib
 import os
 import re
 import time
+from dataclasses import dataclass, field
 
-from . import appcode, db, guard, llm
+from . import appcode, config, db, guard, llm
 
 INV_UPSERT = ("INSERT INTO inventory(sku,name,stock,price_cents) VALUES(?,?,?,?) "
               "ON CONFLICT(sku) DO UPDATE SET stock=excluded.stock")
@@ -94,104 +95,168 @@ def execute_plan(conn, plan):
     conn.executemany(BACKORDER_SQL, [(i,) for i in plan["backorder_ids"]])
 
 
-def plan_merge_tool(live, branch, delta, scratch_path):
-    base = {r["sku"]: dict(r) for r in branch.execute("SELECT * FROM inventory")}
-    cur = {r["sku"]: dict(r) for r in live.execute("SELECT * FROM inventory")}
-    base_orders = {r["id"]: dict(r) for r in branch.execute("SELECT * FROM orders")}
-    base_idem = {r["idem_key"] for r in base_orders.values()}
-    base_cust = {r["id"] for r in branch.execute("SELECT id FROM customers")}
+# Risk score = sum of the factors below, capped at 100. Labels: LOW < 25 <= MEDIUM < 60 <= HIGH.
+RISK_BASE = 8                    # scoped, idempotent statements, dry-run on a clone
+RISK_PER_CONFLICT = 12           # every auto-resolved conflict needs a human look
+RISK_LARGE_BLAST = 5             # touching many rows at once
+LARGE_BLAST_ROWS = 1000
+RISK_DRY_RUN_FAILED = 60
+RISK_MEDIUM_AT, RISK_HIGH_AT = 25, 60
 
-    # --- Conflict & foreign-key resolver
-    running = {s: v["stock"] for s, v in base.items()}
-    conflicts, checks = [], {"fk_customer": 0, "fk_sku": 0, "idem_unique": 0, "id_collision": 0}
-    backorder_ids, seen_idem = [], set()
-    for o in delta["orders"]:
-        if o["customer_id"] in base_cust or any(c["id"] == o["customer_id"] for c in delta["customers"]):
-            checks["fk_customer"] += 1
-        if o["id"] in base_orders:
-            conflicts.append({"kind": "id-collision", "order_id": o["id"],
-                              "detail": f"Order id {o['id']} already exists in the rewound state."})
-        else:
-            checks["id_collision"] += 1
-        if o["idem_key"] in base_idem or o["idem_key"] in seen_idem:
-            conflicts.append({"kind": "duplicate-idempotency-key", "order_id": o["id"],
-                              "detail": f"Idempotency key {o['idem_key'][:10]} already used."})
-        else:
-            checks["idem_unique"] += 1
-        seen_idem.add(o["idem_key"])
-        for it in o["items"]:
-            if it["sku"] not in base and it["sku"] not in cur:
-                conflicts.append({"kind": "orphan-sku", "order_id": o["id"], "detail": f"Unknown SKU {it['sku']}"})
-                continue
-            checks["fk_sku"] += 1
-            if it["sku"] not in running:
-                continue
-            if running[it["sku"]] >= it["qty"]:
-                running[it["sku"]] -= it["qty"]
-            else:
-                short = it["qty"] - running[it["sku"]]
-                running[it["sku"]] = 0
-                conflicts.append({
-                    "kind": "oversell", "order_id": o["id"], "sku": it["sku"], "shortfall": short,
-                    "detail": f"Order #{o['id']} bought {it['qty']}x {it['sku']} but only "
-                              f"{it['qty'] - short} existed at the rewind point. Resolved: stock clamped to 0, "
-                              f"order kept and marked 'backorder' for ops follow-up ({short} unit(s) owed)."})
-                if o["id"] not in backorder_ids:
-                    backorder_ids.append(o["id"])
-    expected = running
-    llm.explain_conflicts(conflicts)
-    inv_rows = [(s, base[s]["name"], expected[s], base[s]["price_cents"])
-                for s in sorted(expected) if cur.get(s, {}).get("stock") != expected[s]]
-    plan = {
-        "inventory_rows": inv_rows,
+
+@dataclass
+class Resolution:
+    """Outcome of replaying the post-incident orders on top of the rewound inventory."""
+    expected: dict                                    # sku -> stock after the merge
+    conflicts: list = field(default_factory=list)
+    checks: dict = field(default_factory=lambda: {"fk_customer": 0, "fk_sku": 0, "idem_unique": 0, "id_collision": 0})
+    backorder_ids: list = field(default_factory=list)
+
+
+def _by_key(conn, table, key):
+    return {r[key]: dict(r) for r in conn.execute(f"SELECT * FROM {table}")}
+
+
+def _check_order_header(order, ctx, res, seen_idem):
+    """Customer exists, id is free, idempotency key unused: record a passed check or a conflict."""
+    customer_known = order["customer_id"] in ctx["customers"]
+    if customer_known:
+        res.checks["fk_customer"] += 1
+    if order["id"] in ctx["orders"]:
+        res.conflicts.append({"kind": "id-collision", "order_id": order["id"],
+                              "detail": f"Order id {order['id']} already exists in the rewound state."})
+    else:
+        res.checks["id_collision"] += 1
+    key = order["idem_key"]
+    if key in ctx["idem"] or key in seen_idem:
+        res.conflicts.append({"kind": "duplicate-idempotency-key", "order_id": order["id"],
+                              "detail": f"Idempotency key {key[:10]} already used."})
+    else:
+        res.checks["idem_unique"] += 1
+    seen_idem.add(key)
+
+
+def _oversell_conflict(order, item, shortfall):
+    return {"kind": "oversell", "order_id": order["id"], "sku": item["sku"], "shortfall": shortfall,
+            "detail": f"Order #{order['id']} bought {item['qty']}x {item['sku']} but only "
+                      f"{item['qty'] - shortfall} existed at the rewind point. Resolved: stock clamped to 0, "
+                      f"order kept and marked 'backorder' for ops follow-up ({shortfall} unit(s) owed)."}
+
+
+def _apply_order_items(order, ctx, res, running):
+    """Take each line's quantity out of the running stock; clamp at zero and flag an oversell."""
+    for item in order["items"]:
+        sku = item["sku"]
+        if sku not in ctx["base"] and sku not in ctx["live"]:
+            res.conflicts.append({"kind": "orphan-sku", "order_id": order["id"], "detail": f"Unknown SKU {sku}"})
+            continue
+        res.checks["fk_sku"] += 1
+        if sku not in running:
+            continue
+        if running[sku] >= item["qty"]:
+            running[sku] -= item["qty"]
+            continue
+        shortfall = item["qty"] - running[sku]
+        running[sku] = 0
+        res.conflicts.append(_oversell_conflict(order, item, shortfall))
+        if order["id"] not in res.backorder_ids:
+            res.backorder_ids.append(order["id"])
+
+
+def resolve_conflicts(ctx, delta):
+    """Replay the delta orders over the rewound stock and collect conflicts. Pure: touches no database."""
+    running = {sku: row["stock"] for sku, row in ctx["base"].items()}
+    res = Resolution(expected=running)
+    seen_idem = set()
+    delta_customers = {c["id"] for c in delta["customers"]}
+    ctx = {**ctx, "customers": ctx["customers"] | delta_customers}
+    for order in delta["orders"]:
+        _check_order_header(order, ctx, res, seen_idem)
+        _apply_order_items(order, ctx, res, running)
+    return res
+
+
+def build_plan(ctx, delta, res):
+    """The idempotent write set: stock rows that differ from live, plus the post-incident orders."""
+    inventory = [(sku, ctx["base"][sku]["name"], res.expected[sku], ctx["base"][sku]["price_cents"])
+                 for sku in sorted(res.expected) if ctx["live"].get(sku, {}).get("stock") != res.expected[sku]]
+    return {
+        "inventory_rows": inventory,
         "customer_rows": [(c["id"], c["name"], c["email"]) for c in delta["customers"]],
         "order_rows": [(o["id"], o["customer_id"], o["total_cents"], o["status"], o["idem_key"], o["created_at"])
                        for o in delta["orders"]],
         "item_rows": [(i["id"], i["order_id"], i["sku"], i["qty"], i["unit_cents"]) for i in delta["items"]],
-        "backorder_ids": backorder_ids,
+        "backorder_ids": res.backorder_ids,
     }
-    # --- dry run on a scratch clone of live: nothing touches production until approval
-    scratch = db.clone(live, scratch_path)
-    scratch.execute("BEGIN")
-    execute_plan(scratch, plan)
-    dry = run_checks(scratch, expected, [o["id"] for o in delta["orders"]])
-    scratch.execute("ROLLBACK")
-    scratch.close()
-    os.remove(scratch_path)
 
-    verdicts = [guard.analyze(s) for s in STATEMENTS]
-    units_before = sum(v["stock"] for v in cur.values())
-    units_after = sum(expected.values())
-    zero_before = sum(1 for v in cur.values() if v["stock"] == 0)
-    n_orders = len(delta["orders"])
-    factors = [("Base risk (scoped, idempotent statements, dry-run on clone)", 8)]
+
+def dry_run(live, plan, expected, order_ids, scratch_path):
+    """Execute the plan on a scratch clone of live and roll back: nothing touches production before approval."""
+    scratch = db.clone(live, scratch_path)
+    try:
+        scratch.execute("BEGIN")
+        execute_plan(scratch, plan)
+        checks = run_checks(scratch, expected, order_ids)
+        scratch.execute("ROLLBACK")
+    finally:
+        scratch.close()
+        if os.path.exists(scratch_path):
+            os.remove(scratch_path)
+    return checks
+
+
+def score_risk(conflicts, restored_rows, dry_checks):
+    factors = [("Base risk (scoped, idempotent statements, dry-run on clone)", RISK_BASE)]
     if conflicts:
-        factors.append((f"{len(conflicts)} data conflict(s) auto-resolved, needs human eyes", 12 * len(conflicts)))
-    if len(inv_rows) > 1000:
-        factors.append((f"Large blast radius ({len(inv_rows):,} rows)", 5))
-    if not all(c["ok"] for c in dry):
-        factors.append(("Dry-run check FAILED", 60))
-    score = min(100, sum(f[1] for f in factors))
-    sample = inv_rows[:3]
-    preview = [
-        f"-- Restore inventory ({len(inv_rows):,} rows, idempotent upsert)\n{INV_UPSERT};",
-        "-- e.g. " + "; ".join(f"({r[0]}, stock={r[2]})" for r in sample) + f"; ... +{max(0, len(inv_rows) - 3):,} more",
+        factors.append((f"{len(conflicts)} data conflict(s) auto-resolved, needs human eyes",
+                        RISK_PER_CONFLICT * len(conflicts)))
+    if restored_rows > LARGE_BLAST_ROWS:
+        factors.append((f"Large blast radius ({restored_rows:,} rows)", RISK_LARGE_BLAST))
+    if not all(c["ok"] for c in dry_checks):
+        factors.append(("Dry-run check FAILED", RISK_DRY_RUN_FAILED))
+    score = min(100, sum(weight for _, weight in factors))
+    label = "LOW" if score < RISK_MEDIUM_AT else "MEDIUM" if score < RISK_HIGH_AT else "HIGH"
+    return {"score": score, "label": label, "factors": factors}
+
+
+def preview_sql(plan, n_orders):
+    rows = plan["inventory_rows"]
+    sample = rows[:3]
+    return [
+        f"-- Restore inventory ({len(rows):,} rows, idempotent upsert)\n{INV_UPSERT};",
+        "-- e.g. " + "; ".join(f"({r[0]}, stock={r[2]})" for r in sample) + f"; ... +{max(0, len(rows) - 3):,} more",
         f"-- Re-assert {n_orders} post-incident orders (no-op if present)\n{ORDER_SQL};",
-        f"-- Resolve oversell conflicts ({len(backorder_ids)})\n{BACKORDER_SQL};" if backorder_ids else
+        f"-- Resolve oversell conflicts ({len(plan['backorder_ids'])})\n{BACKORDER_SQL};" if plan["backorder_ids"] else
         "-- No oversell conflicts to resolve",
     ]
+
+
+def plan_merge_tool(live, branch, delta, scratch_path):
+    """3-way merge: rewound state (base) + what happened since (delta) -> an idempotent plan, verified by a dry run."""
+    ctx = {"base": _by_key(branch, "inventory", "sku"), "live": _by_key(live, "inventory", "sku"),
+           "orders": _by_key(branch, "orders", "id"),
+           "customers": {r["id"] for r in branch.execute("SELECT id FROM customers")}}
+    ctx["idem"] = {o["idem_key"] for o in ctx["orders"].values()}
+
+    res = resolve_conflicts(ctx, delta)
+    llm.explain_conflicts(res.conflicts)
+    plan = build_plan(ctx, delta, res)
+    order_ids = [o["id"] for o in delta["orders"]]
+    dry = dry_run(live, plan, res.expected, order_ids, scratch_path)
+
+    expected = res.expected
     summary = {
-        "restored_rows": len(inv_rows), "orders_preserved": n_orders,
-        "order_ids": [o["id"] for o in delta["orders"]],
-        "units_before": units_before, "units_after": units_after,
-        "zero_before": zero_before, "zero_after": sum(1 for v in expected.values() if v == 0),
-        "conflicts": conflicts, "resolver_checks": checks,
+        "restored_rows": len(plan["inventory_rows"]), "orders_preserved": len(order_ids), "order_ids": order_ids,
+        "units_before": sum(v["stock"] for v in ctx["live"].values()), "units_after": sum(expected.values()),
+        "zero_before": sum(1 for v in ctx["live"].values() if v["stock"] == 0),
+        "zero_after": sum(1 for v in expected.values() if v == 0),
+        "conflicts": res.conflicts, "resolver_checks": res.checks,
         "dry_run": dry, "dry_run_ok": all(c["ok"] for c in dry),
-        "guardrails": [{"allowed": v["allowed"], "rule": v["rule"], "sql": v["sql"]} for v in verdicts],
-        "risk": {"score": score, "label": "LOW" if score < 25 else "MEDIUM" if score < 60 else "HIGH",
-                 "factors": factors},
-        "preview_sql": preview,
-        "live_marker": live.execute("SELECT COALESCE(MAX(id),0) FROM changelog").fetchone()[0],
+        "guardrails": [{"allowed": v["allowed"], "rule": v["rule"], "sql": v["sql"]}
+                       for v in map(guard.analyze, STATEMENTS)],
+        "risk": score_risk(res.conflicts, len(plan["inventory_rows"]), dry),
+        "preview_sql": preview_sql(plan, len(order_ids)),
+        "live_marker": db.last_change_id(live),
     }
     return plan, expected, summary
 
@@ -242,13 +307,15 @@ def diagnose_and_patch_tool(live, branch, incident):
         out["patch_ok"] = False
         return out
 
+    crash_sku = config.load().demo_crash_sku        # the SKU the demo "warehouse feed" marks sold out (TT_DEMO_SKU)
+
     def _verify_candidate(candidate_src):
         try:
             ns = {}
             exec(compile(candidate_src, "patched_handlers", "exec"), ns)
             sandbox = db.clone(branch, ":memory:")
             before = {r["sku"]: r["stock"] for r in sandbox.execute("SELECT sku, stock FROM inventory")}
-            res = ns["sync_stock"](sandbox, {"sku": "APX-0007", "stock": 0})
+            res = ns["sync_stock"](sandbox, {"sku": crash_sku, "stock": 0})
             after = {r["sku"]: r["stock"] for r in sandbox.execute("SELECT sku, stock FROM inventory")}
             changed = [s for s in before if before[s] != after[s]]
             try:
@@ -258,8 +325,8 @@ def diagnose_and_patch_tool(live, branch, incident):
                 rejects_missing = True
             sandbox.close()
             t_list = [
-                {"name": "Crash payload {sku: APX-0007, stock: 0} touches exactly 1 row",
-                 "ok": res.get("updated_rows") == 1 and changed == ["APX-0007"], "detail": f"{res.get('updated_rows')} row(s) updated"},
+                {"name": f"Crash payload {{sku: {crash_sku}, stock: 0}} touches exactly 1 row",
+                 "ok": res.get("updated_rows") == 1 and changed == [crash_sku], "detail": f"{res.get('updated_rows')} row(s) updated"},
                 {"name": "Payload without sku is rejected", "ok": rejects_missing, "detail": "ValueError raised"},
             ]
             return all(t["ok"] for t in t_list), t_list
@@ -296,7 +363,7 @@ def diagnose_and_patch_tool(live, branch, incident):
 # ---------------------------------------------------------------- 5. apply + undo
 def apply_recovery_tool(live, plan, expected, preserved_ids, marker, patched_source, backup_db, backup_src, timing=None):
     """Approved cutover. Atomic: either every check passes and we commit, or nothing changes."""
-    cur_marker = live.execute("SELECT COALESCE(MAX(id),0) FROM changelog").fetchone()[0]
+    cur_marker = db.last_change_id(live)
     if cur_marker != marker:
         raise RuntimeError("Plan is stale: live data changed since the plan was built. Re-run the rewind.")
     snap = db.clone(live, backup_db)
