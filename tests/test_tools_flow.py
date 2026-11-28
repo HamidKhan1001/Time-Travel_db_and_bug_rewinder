@@ -132,10 +132,10 @@ class ApplyAndUndoTests(Env):
         self.assertEqual(self.stock()["APX-0007"], 10)
 
     def test_guard_blocks_an_unsafe_statement_before_anything_runs(self):
-        with mock.patch.object(tools.guard, "analyze", return_value={"allowed": False, "why": "nope"}):
-            with self.assertRaisesRegex(RuntimeError, "Guardrail blocked"):
-                self.live.execute("BEGIN")
-                tools.execute_plan(self.live, self.plan())
+        self.live.execute("BEGIN")
+        with mock.patch.object(tools.guard, "analyze", return_value={"allowed": False, "why": "nope"}), \
+                self.assertRaisesRegex(RuntimeError, "Guardrail blocked"):
+            tools.execute_plan(self.live, self.plan())
         self.live.execute("ROLLBACK")
 
 

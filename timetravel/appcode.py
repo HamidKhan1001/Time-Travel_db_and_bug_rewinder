@@ -1,5 +1,6 @@
 """Loads the live application code from source text (so patch / undo take effect instantly)."""
 import os
+
 from .db import BASE
 
 HANDLERS_PATH = os.path.join(BASE, "app", "handlers.py")

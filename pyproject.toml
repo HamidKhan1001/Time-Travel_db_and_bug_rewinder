@@ -32,8 +32,20 @@ target-version = "py311"
 extend-exclude = ["app", "seed", "frontend", "data", "test-reports"]
 
 [tool.ruff.lint]
-# Real bugs only (syntax errors, undefined names, unused imports/variables). Style rules can be added later.
-select = ["E9", "F"]
+# E9/F: syntax errors, undefined names, unused imports. I: sorted imports. B: bug-prone patterns (flake8-bugbear).
+# SIM: needless complexity. C90: cyclomatic complexity cap, so new code cannot quietly grow another 40-branch function.
+select = ["E9", "F", "I", "B", "SIM", "C90"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 15
+
+[tool.ruff.lint.per-file-ignores]
+# Known refactor candidates in the recovery engine and SQL guard (complexity 16-19). They are covered by tests
+# and left alone on purpose; remove an entry when the function is split. Everything else must stay under the cap.
+"timetravel/guard.py" = ["C901"]
+"timetravel/recovery/dependencies.py" = ["C901"]
+"timetravel/recovery/integrity.py" = ["C901"]
+"timetravel/recovery/recovery_engine.py" = ["C901"]
 
 [tool.coverage.run]
 source = ["timetravel", "server.py"]

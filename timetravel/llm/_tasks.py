@@ -15,17 +15,21 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
+from ._prompts import EXPLAIN_TEMPLATE, INTENT_SYSTEM, PATCH_SYSTEM
 from ._schemas import (
-    INTENT_SCHEMA, PATCH_SCHEMA, EXPLAIN_SCHEMA,
-    validate_intent, validate_patch, validate_explain,
+    EXPLAIN_SCHEMA,
+    INTENT_SCHEMA,
+    PATCH_SCHEMA,
+    validate_explain,
+    validate_intent,
+    validate_patch,
 )
-from ._prompts import INTENT_SYSTEM, PATCH_SYSTEM, EXPLAIN_TEMPLATE
 
 if TYPE_CHECKING:
-    from ._provider import LLMProvider
     from ._config import LLMConfig
+    from ._provider import LLMProvider
 
 logger = logging.getLogger(__name__)
 

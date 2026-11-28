@@ -15,6 +15,13 @@ All notable changes. Format based on [Keep a Changelog](https://keepachangelog.c
 - Architecture document with diagrams and six ADRs; `CONTRIBUTING.md`, `SECURITY.md`, `CODEOWNERS`, PR template, Dependabot.
 - `pyproject.toml` with extras (`gemini`, `bedrock`, `ai`, `dev`).
 
+### Changed (structure and quality)
+- `server.py` (560 lines, `do_GET` complexity 29) is now a 9-line entry point. The HTTP layer is the `timetravel/web/` package: `AppContext` instead of module globals, a route table, a socket-free `Security` class, one request pipeline and one module per API area (ADR 0007). Behaviour and the OpenAPI contract are unchanged; the contract test now compares the router with the spec exactly.
+- `plan_merge_tool` (complexity 44) is split into `resolve_conflicts`, `build_plan`, `dry_run`, `score_risk` and `preview_sql`, with named risk weights. 23 characterization tests (golden output for 8 scenarios) prove the output is identical. The dry-run scratch file is now removed even if the dry run fails.
+- Lint rules widened: sorted imports, bugbear, simplifications and a complexity cap of 15 (known engine hot spots are listed in `pyproject.toml` until split).
+- `TT_DASHBOARD_SKUS` configures the SKUs the dashboard shows; patch verification uses `TT_DEMO_SKU` instead of a hardcoded SKU.
+- ADR 0008 records why the legacy `changelog` stays for now and the exit criteria for removing it.
+
 ### Added (security, rate limiting, QA)
 - Rate limiting (token bucket per client address): separate read and write buckets, `429` with `Retry-After` and `X-RateLimit-*` headers, failed-auth lockout, health and static files exempt. All limits are configurable.
 - Security headers on every response (CSP, `nosniff`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, COOP), `Cache-Control: no-store` on the API, `WWW-Authenticate` on 401.

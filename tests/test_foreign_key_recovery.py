@@ -17,7 +17,6 @@ from timetravel.recovery import (
 )
 from timetravel.recovery.integrity import RecoveryConflictError, verify_foreign_keys
 
-
 CASCADE_SCHEMA = """
 CREATE TABLE customers (id INTEGER PRIMARY KEY, name TEXT NOT NULL, email TEXT NOT NULL);
 CREATE TABLE inventory (

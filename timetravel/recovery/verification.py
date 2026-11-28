@@ -1,5 +1,6 @@
 """Checksum-based verification of recovered database state."""
 import base64
+import contextlib
 import hashlib
 import json
 import math
@@ -33,10 +34,8 @@ class VerificationBaseline:
             if os.path.isdir(path):
                 shutil.rmtree(path, ignore_errors=True)
             elif os.path.exists(path):
-                try:
+                with contextlib.suppress(OSError):
                     os.remove(path)
-                except OSError:
-                    pass
 
     def __enter__(self):
         return self
@@ -45,10 +44,8 @@ class VerificationBaseline:
         self.close()
 
     def __del__(self):
-        try:
+        with contextlib.suppress(Exception):          # never raise from a destructor
             self.close()
-        except Exception:
-            pass
 
 
 def _quote(identifier):

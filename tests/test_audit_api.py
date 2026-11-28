@@ -3,15 +3,16 @@ import json
 import os
 import sys
 import tempfile
-import threading
 import unittest
 import urllib.error
 import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import server
+import harness
+
 from timetravel import agent, appcode, audit, db
+from timetravel.web import static
 
 
 class AuditApiTests(unittest.TestCase):
@@ -115,11 +116,9 @@ class AuditApiTests(unittest.TestCase):
             agent.approve(session.id)
 
     def serve(self):
-        httpd = server.ThreadingHTTPServer(("127.0.0.1", 0), server.H)
-        thread = threading.Thread(target=httpd.serve_forever, daemon=True)
-        thread.start()
-        self.addCleanup(lambda: (httpd.shutdown(), httpd.server_close(), thread.join(timeout=2)))
-        return f"http://127.0.0.1:{httpd.server_address[1]}"
+        running = harness.start_server()
+        self.addCleanup(running.stop)
+        return running.url
 
     def get(self, url, origin=None):
         request = urllib.request.Request(url, headers={"Origin": origin} if origin else {})
@@ -179,7 +178,7 @@ class AuditApiTests(unittest.TestCase):
         db.create_schema(conn)                     # a snapshot taken BEFORE the audit row above existed
         conn.close()
         # no backup_<id>.py exists, so the second undo step raises after the DB snapshot replaced live
-        with self.assertRaises(Exception):
+        with self.assertRaises(OSError):            # the missing backup_<id>.py
             agent.undo(session.id)
         types = [e["event_type"] for e in agent.audit_events(session.id)]
         self.assertIn("recovery_completed", types)
@@ -187,14 +186,14 @@ class AuditApiTests(unittest.TestCase):
 
     def test_app_route_serves_404_message_when_not_built_and_blocks_traversal(self):
         base = self.serve()
-        original = server.APP_DIR
-        server.APP_DIR = os.path.join(self.tmp.name, "dist")
-        self.addCleanup(setattr, server, "APP_DIR", original)
+        original = static.APP_DIR
+        static.APP_DIR = os.path.join(self.tmp.name, "dist")
+        self.addCleanup(setattr, static, "APP_DIR", original)
         with self.assertRaises(urllib.error.HTTPError) as raised:
             self.get(f"{base}/app/")
         self.assertEqual(raised.exception.code, 404)
-        os.makedirs(server.APP_DIR)
-        with open(os.path.join(server.APP_DIR, "index.html"), "w") as handle:
+        os.makedirs(static.APP_DIR)
+        with open(os.path.join(static.APP_DIR, "index.html"), "w") as handle:
             handle.write("<html>shell</html>")
         with open(os.path.join(self.tmp.name, "secret.txt"), "w") as handle:
             handle.write("secret")
@@ -207,7 +206,7 @@ class AuditApiTests(unittest.TestCase):
 
     def test_patched_flag_is_false_for_the_buggy_handler(self):
         # place_order() already contains "WHERE sku = ?"; that must not read as "bug fixed".
-        self.assertFalse(server.api_state()["patched"])
+        self.assertFalse(harness.api_state()["patched"])
 
 
 if __name__ == "__main__":

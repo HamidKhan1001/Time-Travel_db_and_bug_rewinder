@@ -1,12 +1,15 @@
-import os, sys
+import os
+import sys
+import time
+
 os.environ["TT_PACE"] = "0"
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from timetravel import seed, db, agent, appcode
+from timetravel import agent, appcode, db, seed
 
 seed.reset()
 c = db.connect()
 before_units = c.execute("select sum(stock) from inventory").fetchone()[0]
-import time; time.sleep(1)
+time.sleep(1)
 r = appcode.fn("sync_stock")(c, {"sku": "APX-0007", "stock": 0})
 assert r["updated_rows"] == 1420, r
 assert c.execute("select sum(stock) from inventory").fetchone()[0] == 0

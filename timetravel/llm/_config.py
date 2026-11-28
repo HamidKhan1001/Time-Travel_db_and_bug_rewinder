@@ -44,7 +44,5 @@ class LLMConfig:
         """True if the selected provider has the credentials it needs."""
         if self.provider == "gemini":
             return bool(self.api_key)
-        if self.provider == "bedrock":
-            # boto3 reads AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / IAM role automatically
-            return True
-        return False
+        # bedrock: boto3 reads AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / IAM role automatically
+        return self.provider == "bedrock"

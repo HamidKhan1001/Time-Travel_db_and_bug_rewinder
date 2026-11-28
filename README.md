@@ -56,7 +56,7 @@ npm run dev:live   # real backend: run `python3 server.py` in another terminal
 
 ```mermaid
 flowchart LR
-    UI["React UI<br/>console · review · audit"] -->|HTTP /api| API["server.py"]
+    UI["React UI<br/>console · review · audit"] -->|HTTP /api| API["timetravel/web"]
     API --> AGENT["Agent<br/>orchestrator + approval gate"]
     AGENT --> LLM["Intent / patch / explanation<br/>Gemini or Bedrock,<br/>rule-based fallback"]
     AGENT --> TOOLS["Tools<br/>rewind · delta · merge · patch · apply"]
@@ -70,13 +70,16 @@ The model only *proposes*. Deterministic code verifies every proposal on a clone
 ## Project layout
 
 ```
-server.py              HTTP server: API, request IDs, access log, optional bearer token
+server.py              entry point (`python3 server.py`); the implementation is timetravel/web/
 reset.py               restore the seeded demo state
 timetravel/            the engine (standard library only)
   agent.py               orchestrator, approval gate, undo, discard
   tools.py               rewind_branch, extract_delta, plan_merge, diagnose_and_patch, apply_recovery
   db.py                  schema, change-log triggers, clone and reverse
   guard.py               deterministic SQL policy
+  config.py              every setting, read from the environment and validated once
+  ratelimit.py           token-bucket limiter
+  web/                   HTTP layer: context, router, security, handler, routes/, static, streaming
   audit.py               durable audit events and recovery history
   llm/                   intent parsing, patch proposal, explanations (+ regex fallback)
   recovery/              transaction history, plans, FK-aware execution, checksum verification

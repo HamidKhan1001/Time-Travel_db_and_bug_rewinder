@@ -1,5 +1,4 @@
 """Configuration, rate limiting, security headers, origin/host checks and the error envelope."""
-import dataclasses
 import http.client
 import json
 import os
@@ -12,9 +11,13 @@ from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import server
+import harness
+
 from timetravel import agent, appcode, config, db
 from timetravel.ratelimit import RateLimiter
+from timetravel.web.context import AppContext
+from timetravel.web.routes import orders as orders_routes
+from timetravel.web.security import Security
 
 
 class FakeClock:
@@ -137,27 +140,20 @@ class HttpSecurityBase(unittest.TestCase):
         c.close()
         appcode.reload()
         self.clock = FakeClock()
-        self.patches = [mock.patch.object(server, "LIMITERS", {
-            name: RateLimiter(rate, burst, clock=self.clock) for name, (rate, burst) in self.LIMITS.items()})]
-        for p in self.patches:
-            p.start()
-        self.httpd = server.ThreadingHTTPServer(("127.0.0.1", 0), server.H)
-        self.thread = threading.Thread(target=self.httpd.serve_forever, daemon=True)
-        self.thread.start()
-        self.port = self.httpd.server_address[1]
+        cfg = harness.default_settings()
+        limiters = {name: RateLimiter(rate, burst, clock=self.clock) for name, (rate, burst) in self.LIMITS.items()}
+        self.ctx = AppContext.create(cfg, Security(cfg, limiters))
+        self.running = harness.start_server(self.ctx)
+        self.port = self.running.port
 
     def tearDown(self):
-        self.httpd.shutdown(); self.httpd.server_close(); self.thread.join(timeout=2)
-        for p in self.patches:
-            p.stop()
+        self.running.stop()
         agent.SESSIONS.clear()
         db.LIVE, db.DATA, db.connect = self.original
         self.tmp.cleanup()
 
     def use_cfg(self, **changes):
-        p = mock.patch.object(server, "cfg", dataclasses.replace(server.cfg, **changes))
-        p.start()
-        self.addCleanup(p.stop)
+        self.ctx.reconfigure(**changes)
 
     def call(self, method, path, body=None, headers=None):
         c = http.client.HTTPConnection("127.0.0.1", self.port, timeout=3)
@@ -203,8 +199,8 @@ class RateLimitHttpTests(HttpSecurityBase):
             self.assertIn(self.call("GET", "/app/")[0], (200, 404))  # 404 only when the UI is not built
 
     def test_disabled_flag_turns_limiting_off(self):
-        with mock.patch.object(server, "RATE_LIMIT_ENABLED", False):
-            self.assertTrue(all(self.call("GET", "/api/state")[0] == 200 for _ in range(12)))
+        self.use_cfg(rate_limit_enabled=False)
+        self.assertTrue(all(self.call("GET", "/api/state")[0] == 200 for _ in range(12)))
 
     def test_forwarded_for_is_ignored_unless_the_proxy_is_trusted(self):
         for i in range(5):
@@ -224,9 +220,7 @@ class AuthHttpTests(HttpSecurityBase):
 
     def setUp(self):
         super().setUp()
-        env = mock.patch.dict(os.environ, {"TT_API_TOKEN": "s3cret-token"})
-        env.start()
-        self.addCleanup(env.stop)
+        self.use_cfg(api_token="s3cret-token")
 
     def test_missing_token_is_401_with_challenge_and_code(self):
         status, body, r = self.call("GET", "/api/state")
@@ -322,12 +316,12 @@ class ErrorEnvelopeTests(HttpSecurityBase):
             self.assertEqual(payload["request_id"], r.getheader("X-Request-Id"))
 
     def test_payload_too_large_code(self):
-        with mock.patch.object(server, "MAX_BODY_BYTES", 10):
-            status, body, _ = self.call("POST", "/api/rewind", body=json.dumps({"prompt": "x" * 100}))
+        self.use_cfg(max_body_bytes=10)
+        status, body, _ = self.call("POST", "/api/rewind", body=json.dumps({"prompt": "x" * 100}))
         self.assertEqual((status, body["code"]), (413, "PAYLOAD_TOO_LARGE"))
 
     def test_database_failure_is_503_with_retry_after_not_a_client_error(self):
-        with mock.patch.object(server, "post", side_effect=sqlite3.OperationalError("database is locked")):
+        with mock.patch.object(orders_routes, "_call_handler", side_effect=sqlite3.OperationalError("database is locked")):
             status, body, r = self.call("POST", "/api/orders", body="{}")
         self.assertEqual((status, body["code"], r.getheader("Retry-After")), (503, "DB_BUSY", "2"))
         self.assertNotIn("locked", body["error"])
@@ -343,7 +337,7 @@ class DemoRouteTests(HttpSecurityBase):
     def test_crash_sku_comes_from_configuration(self):
         self.use_cfg(demo_crash_sku="APX-0042")
         seen = {}
-        with mock.patch.object(appcode, "fn", return_value=lambda conn, body: seen.update(body) or {"ok": True}):
+        with mock.patch.object(orders_routes, "_call_handler", side_effect=lambda name, body: seen.update(body) or {"ok": True}):
             self.call("POST", "/api/demo/crash", body="{}")
         self.assertEqual(seen, {"sku": "APX-0042", "stock": 0})
 
