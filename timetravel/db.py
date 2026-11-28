@@ -67,6 +67,10 @@ def connect(path=LIVE):
     c.row_factory = sqlite3.Row
     c.create_function("app_now", 0, clock.now)
     c.execute("PRAGMA foreign_keys=ON")
+    if path != ":memory:":
+        # WAL lets readers (state polling, SSE) run while a writer commits instead of blocking on it.
+        c.execute("PRAGMA journal_mode=WAL")
+        c.execute("PRAGMA synchronous=NORMAL")
     transaction_logger.install(c, clock.now)
     audit.ensure_schema(c)
     return c
@@ -90,6 +94,38 @@ def create_schema(c):
     transaction_logger.ensure_schema(c, TABLES, clock.now)
     from . import audit
     audit.ensure_schema(c)
+    ensure_indexes(c)
+
+
+def ensure_indexes(c):
+    """Idempotent indexes for databases created before they existed. Safe to call on every start."""
+    has_changelog = c.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='changelog'").fetchone()
+    if has_changelog:
+        c.execute("CREATE INDEX IF NOT EXISTS ix_changelog_ts ON changelog(ts)")
+
+
+def last_change_id(conn):
+    """Highest changelog id ever issued: O(1) (rowid lookup), unlike COUNT(*) which scans the table."""
+    return conn.execute("SELECT COALESCE(MAX(id), 0) FROM changelog").fetchone()[0]
+
+
+def prune_changelog(conn, keep_rows, batch=5000):
+    """Bound the legacy changelog to the newest `keep_rows` rows. Returns how many rows were deleted.
+
+    Rewinding further back than the oldest kept row is no longer possible, so keep_rows <= 0 disables pruning.
+    Deletes in small batches so a writer is never blocked for long.
+    """
+    if keep_rows <= 0:
+        return 0
+    cutoff = last_change_id(conn) - keep_rows
+    deleted = 0
+    while cutoff > 0:
+        n = conn.execute("DELETE FROM changelog WHERE id IN (SELECT id FROM changelog WHERE id <= ? LIMIT ?)",
+                         (cutoff, batch)).rowcount
+        deleted += n
+        if n < batch:
+            break
+    return deleted
 
 
 def clone(src_conn, dest_path):
@@ -119,4 +155,6 @@ def reverse_changes(conn, since_ts, events):
 
 
 def changes_after(conn, ts):
-    return conn.execute("SELECT * FROM changelog WHERE ts > ? ORDER BY id DESC", (ts,)).fetchall()
+    # The subquery lets SQLite range-scan ix_changelog_ts; a plain "WHERE ts > ? ORDER BY id DESC" scans the table.
+    return conn.execute("SELECT * FROM changelog WHERE id IN (SELECT id FROM changelog WHERE ts > ?) "
+                        "ORDER BY id DESC", (ts,)).fetchall()

@@ -95,6 +95,11 @@ docs/                  architecture, ADRs, OpenAPI spec, evidence and analysis n
 | `PORT` / `HOST` | `8000` / `127.0.0.1` | Listen address. Containers set `HOST=0.0.0.0`. |
 | `TT_API_TOKEN` | unset | If set, every `/api` route except `/api/health` needs `Authorization: Bearer <token>`. In the browser run `localStorage.setItem('tt_api_token', '<token>')` once. |
 | `TT_LOG_LEVEL` | `INFO` | Access log level. Each line carries a request ID (also returned as `X-Request-Id`). |
+| `TT_MAX_BODY_BYTES` | `1048576` | Largest accepted POST body. Bigger requests get `413`. |
+| `TT_REQUEST_TIMEOUT` | `30` | Seconds before a stalled client connection is dropped. |
+| `TT_MAX_SSE_STREAMS` | `32` | Concurrent `/events` streams. Over the cap returns `503` with `Retry-After`. |
+| `TT_MAX_SESSIONS` | `200` | In-memory sessions kept. Finished ones are evicted first; running ones never are. Audit history stays in the DB. |
+| `TT_CHANGELOG_MAX_ROWS` | `500000` | Newest legacy changelog rows kept (pruned every 10 min). `0` keeps everything. Rewinding past the oldest kept row is not possible. |
 | `TT_PACE` | `0.4` | Seconds between agent steps so the demo feed is readable. `0` for tests. |
 | `TT_LLM_PROVIDER` | `gemini` | `gemini` or `bedrock`. Without credentials the rule-based parser is used. |
 | `GEMINI_API_KEY`, `TT_LLM_MODEL`, `TT_BEDROCK_REGION`, `TT_BEDROCK_MODEL` | | Provider settings. See [docs/ai-setup.md](docs/ai-setup.md). |

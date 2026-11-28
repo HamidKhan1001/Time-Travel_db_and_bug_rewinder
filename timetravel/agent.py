@@ -9,6 +9,9 @@ from . import audit, db, llm, recovery_projection, tools
 PACE = float(os.getenv("TT_PACE", "0.4"))     # tiny pause between steps so the feed is readable on stage
 SESSIONS: dict[str, "Session"] = {}
 _monotonic = time.perf_counter
+MAX_SESSIONS = int(os.getenv("TT_MAX_SESSIONS", "200"))
+_IN_FLIGHT = {"starting", "parsing", "branching", "extracting_delta", "planning", "diagnosing",
+              "awaiting_approval", "applying"}
 
 
 def _elapsed(started, ended):
@@ -80,8 +83,28 @@ class Session:
                 "can_approve": self.phase == "awaiting_approval", "can_undo": self.phase == "applied"}
 
 
+def evict_sessions(limit=None):
+    """Keep the in-memory session map bounded. Durable audit history in the DB is unaffected.
+
+    Finished sessions (discarded/undone/error) go first, then the oldest applied ones. Sessions that are
+    still running or waiting for approval are never evicted. Returns how many were removed.
+    """
+    limit = MAX_SESSIONS if limit is None else limit
+    excess = len(SESSIONS) - limit
+    if excess <= 0:
+        return 0
+    rank = lambda s: (s.phase == "applied", s.created)        # finished first, then oldest
+    candidates = sorted((s for s in list(SESSIONS.values()) if s.phase not in _IN_FLIGHT), key=rank)
+    removed = 0
+    for s in candidates[:excess]:
+        if SESSIONS.pop(s.id, None) is not None:
+            removed += 1
+    return removed
+
+
 def start(prompt, background=True):
     s = Session(prompt)
+    evict_sessions(MAX_SESSIONS - 1)
     SESSIONS[s.id] = s
     _record_audit(s, "recovery_initiated", "started", {"prompt_length": len(prompt), "prompt": prompt[:500]})
     if background:

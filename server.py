@@ -27,6 +27,13 @@ MIME = {".html": "text/html; charset=utf-8", ".js": "application/javascript; cha
 PATCHED_MARK = "UPDATE inventory SET stock = ? WHERE sku = ?"
 LOCAL_ORIGIN = re.compile(r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$")
 
+MAX_BODY_BYTES = int(os.getenv("TT_MAX_BODY_BYTES", str(1024 * 1024)))      # reject bigger POST bodies with 413
+REQUEST_TIMEOUT = float(os.getenv("TT_REQUEST_TIMEOUT", "30"))              # slow or stalled clients are dropped
+MAX_SSE_STREAMS = int(os.getenv("TT_MAX_SSE_STREAMS", "32"))                # each stream pins a server thread
+CHANGELOG_MAX_ROWS = int(os.getenv("TT_CHANGELOG_MAX_ROWS", "500000"))      # 0 keeps everything
+PRUNE_EVERY_TICKS = 150                                                     # warm_loop ticks (4s each) = 10 min
+SSE_SLOTS = threading.BoundedSemaphore(MAX_SSE_STREAMS)
+
 
 def api_token():
     """Optional shared secret. Unset means open (fine for localhost demos); set it before exposing the port."""
@@ -58,18 +65,47 @@ def health():
             "llm_provider": os.getenv("TT_LLM_PROVIDER", "gemini"), "auth": "token" if api_token() else "open"}
 
 
+def warm_tick():
+    """One warm-up measurement. Takes no application lock: SQLite's online backup reads a consistent
+    snapshot, and in WAL mode it does not block writers, so API requests never queue behind it."""
+    c = db.connect()
+    m = None
+    try:
+        t = time.perf_counter()
+        m = db.clone(c, ":memory:")
+        WARM.update(ms=round((time.perf_counter() - t) * 1000, 1), at=time.time())
+    finally:
+        if m is not None:
+            m.close()
+        c.close()
+
+
+def prune_tick():
+    """Trim the legacy changelog. Takes the lock because recovery reads it as one consistent unit."""
+    with db.LOCK:
+        c = db.connect()
+        try:
+            return db.prune_changelog(c, CHANGELOG_MAX_ROWS)
+        finally:
+            c.close()
+
+
 def warm_loop():
-    """Keeps the branch engine hot: proves a clone is cheap and reports how fast it is."""
+    """Background upkeep: keeps the branch engine hot and bounds the changelog. Never dies silently."""
+    ticks, failing = 0, False
     while True:
         try:
-            with db.LOCK:
-                c = db.connect()
-                t = time.perf_counter()
-                m = db.clone(c, ":memory:")
-                WARM.update(ms=round((time.perf_counter() - t) * 1000, 1), at=time.time())
-                m.close(); c.close()
+            warm_tick()
+            if ticks % PRUNE_EVERY_TICKS == 0:
+                removed = prune_tick()
+                if removed:
+                    log.info("pruned %d old changelog rows (keeping newest %d)", removed, CHANGELOG_MAX_ROWS)
+            failing = False
         except Exception:
-            pass
+            if not failing:                      # log the first failure of a streak, not every 4 seconds
+                log.exception("warm loop failed; will keep retrying")
+            failing = True
+        ticks += 1
         time.sleep(4)
 
 
@@ -89,7 +125,7 @@ def api_state():
         inc = tools.detect_incident(c)
         win = db.clock.now() - 600
         dots = [dict(r) for r in c.execute("SELECT id, created_at ts FROM orders WHERE created_at > ?", (win,))]
-        evts = c.execute("SELECT COUNT(*) FROM changelog").fetchone()[0]
+        evts = db.last_change_id(c)
         c.close()
     src = appcode.read_source()
     return {"now": db.clock.now(), "inventory": {"skus": inv["n"], "units": inv["u"], "zero": inv["z"], "sample": sample},
@@ -133,7 +169,16 @@ def post(path, body):
     raise NotFound(f"unknown route {path}")
 
 
+class BadRequest(ValueError):
+    """The client sent something we refuse to process (400, or the given status)."""
+    def __init__(self, message, status=400):
+        super().__init__(message)
+        self.status = status
+
+
 class H(BaseHTTPRequestHandler):
+    timeout = REQUEST_TIMEOUT        # StreamRequestHandler applies this to the socket: no stalled-client thread leaks
+
     def handle(self):
         try:
             super().handle()
@@ -245,6 +290,12 @@ class H(BaseHTTPRequestHandler):
                 return
             if self.path == "/api/health":
                 return self._send(200, health())
+            if self.path == "/favicon.ico":                 # browsers ask for this regardless of the <link> tag
+                self.send_response(302)
+                self.send_header("Location", "/app/favicon.svg")
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+                return
             if self.path in ("/", "/index.html"):          # the React app is the only UI
                 self.send_response(302)
                 self.send_header("Location", "/app/")
@@ -281,9 +332,20 @@ class H(BaseHTTPRequestHandler):
                 try:
                     historical = sse.read_events_after(sid, after_id)
                 except Exception:
+                    log.exception("request_id=%s could not read audit history for %s", self._rid, sid)
                     return self._send(500, {"error": "audit stream unavailable"})
                 if not historical and sid not in agent.SESSIONS:
                     return self._send(404, {"error": "session or audit history not found"})
+                if not SSE_SLOTS.acquire(blocking=False):
+                    body = json.dumps({"error": "too many open event streams, retry shortly"}).encode()
+                    self.send_response(503)
+                    self.send_header("Retry-After", "5")
+                    self.send_header("Content-Type", "application/json")
+                    self.send_header("Content-Length", str(len(body)))
+                    self._cors()
+                    self.end_headers()
+                    self.wfile.write(body)
+                    return
 
                 self.send_response(200)
                 self.send_header("Content-Type", "text/event-stream; charset=utf-8")
@@ -300,6 +362,8 @@ class H(BaseHTTPRequestHandler):
                         self.wfile.flush()
                 except (BrokenPipeError, ConnectionResetError, OSError):
                     pass
+                finally:
+                    SSE_SLOTS.release()
                 return
 
             if parsed.path.startswith("/api/session/") and parsed.path.endswith("/audit"):
@@ -316,8 +380,25 @@ class H(BaseHTTPRequestHandler):
                 return self._send(200, agent.SESSIONS[sid].to_json())
 
             self._send(404, {"error": "not found"})
-        except Exception as e:
-            self._send(500, {"error": str(e)})
+        except Exception:
+            log.exception("request_id=%s unhandled error on GET %s", self._rid, self.path)
+            self._send(500, {"error": "internal error", "request_id": self._rid})
+
+    def _read_json_body(self):
+        """Read and validate the POST body: bounded size, valid JSON, and a JSON object."""
+        raw_length = self.headers.get("Content-Length") or "0"
+        if not raw_length.isdigit():
+            raise BadRequest("invalid Content-Length")
+        n = int(raw_length)
+        if n > MAX_BODY_BYTES:
+            raise BadRequest(f"request body too large (limit {MAX_BODY_BYTES} bytes)", 413)
+        try:
+            body = json.loads(self.rfile.read(n) or b"{}")
+        except (ValueError, UnicodeDecodeError):
+            raise BadRequest("request body is not valid JSON")
+        if not isinstance(body, dict):
+            raise BadRequest("request body must be a JSON object")
+        return body
 
     def do_POST(self):
         self._begin()
@@ -327,9 +408,10 @@ class H(BaseHTTPRequestHandler):
             origin = self.headers.get("Origin")
             if origin and not LOCAL_ORIGIN.match(origin):      # a web page on another site must not drive this API
                 return self._send(403, {"error": "cross-origin requests are not allowed"})
-            n = int(self.headers.get("Content-Length") or 0)
-            body = json.loads(self.rfile.read(n) or b"{}")
+            body = self._read_json_body()
             self._send(200, post(self.path, body))
+        except BadRequest as e:
+            self._send(e.status, {"error": str(e)})
         except NotFound as e:
             self._send(404, {"error": e.args[0]})
         except KeyError as e:
@@ -344,6 +426,12 @@ def main():
     if not os.path.exists(db.LIVE):
         seed.reset()
     appcode.reload()
+    with db.LOCK:
+        c = db.connect()
+        try:
+            db.ensure_indexes(c)        # databases created before the index existed get it on first start
+        finally:
+            c.close()
     threading.Thread(target=warm_loop, daemon=True).start()
     host = os.getenv("HOST", "127.0.0.1")        # keep loopback unless you set a token and put it behind TLS
     port = int(os.getenv("PORT", "8000"))
