@@ -13,7 +13,8 @@ const apiProxyTarget = process.env.API_PROXY_TARGET || 'http://127.0.0.1:8000'
 // https://vite.dev/config/
 export default defineConfig(({ command }) => ({
   // The Python server serves the production build under /app/ (see server.py).
-  base: command === 'build' ? '/app/' : '/',
+  // Vercel serves from the site root, so use '/' there (VERCEL is set automatically).
+  base: command === 'build' && !process.env.VERCEL ? '/app/' : '/',
   plugins: [react()],
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
