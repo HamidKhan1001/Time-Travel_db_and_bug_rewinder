@@ -1,12 +1,4 @@
 """Durable transaction history and deterministic recovery primitives for Time-Travel DB."""
-from .dependencies import (
-    DependencyEdge,
-    ForeignKey,
-    UnsupportedRelationshipError,
-    inspect_foreign_keys,
-    relationship_summary,
-)
-from .integrity import RecoveryConflictError, analyze_conflicts, validate_step_schema
 from .change_tracker import (
     ChangeEvent,
     TransactionRecord,
@@ -18,6 +10,14 @@ from .change_tracker import (
     history_installed,
     latest_event_id,
 )
+from .dependencies import (
+    DependencyEdge,
+    ForeignKey,
+    UnsupportedRelationshipError,
+    inspect_foreign_keys,
+    relationship_summary,
+)
+from .integrity import RecoveryConflictError, analyze_conflicts, validate_step_schema
 from .recovery_engine import (
     create_plan,
     dry_run_plan,

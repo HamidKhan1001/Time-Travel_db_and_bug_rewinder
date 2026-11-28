@@ -136,8 +136,8 @@ class Phase9ComprehensiveTests(unittest.TestCase):
         self.assertEqual(stocks, {"SKU-1": 5, "SKU-2": 7})
 
     def test_07_second_crash_scenario(self):
-        from tests.setup_second_crash import setup_scenario
         from tests.run_second_crash import run_scenario
+        from tests.setup_second_crash import setup_scenario
         setup_scenario(self.tmp.name)
         report = run_scenario(directory=self.tmp.name)
         self.assertEqual(report["status"], "PASS")

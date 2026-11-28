@@ -10,6 +10,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from run_second_crash import run_scenario
 from setup_second_crash import setup_scenario
+
 from timetravel import db
 from timetravel.recovery import (
     change_tracker,

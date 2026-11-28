@@ -43,7 +43,7 @@ legitimate new data. When a bad deploy wipes inventory:
 | `timetravel/guard.py` | SQL safety guardrails (deterministic, LLM-proof) |
 | `timetravel/seed.py` | Demo seed: 1,420 SKUs, 12 customers, 40 orders |
 | `app/handlers.py` | Live app code the agent can patch (intentionally buggy) |
-| `server.py` | HTTP server + all API routes |
+| `server.py` | entry point; the HTTP layer is `timetravel/web/` (router, security, handler, `routes/`) |
 | `frontend/` | React + Vite UI, served at `/app/` after `npm run build:live` |
 | `tests/e2e.py` | Headless end-to-end test |
 

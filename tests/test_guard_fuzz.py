@@ -1,7 +1,7 @@
 """Deterministic guard fuzz/corpus tests: mixed case, comments, Unicode, and semicolon variants."""
-import sys
 import os
 import random
+import sys
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

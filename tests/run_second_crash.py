@@ -19,6 +19,7 @@ from setup_second_crash import (
     setup_scenario,
     table_rows,
 )
+
 from timetravel import db
 from timetravel.recovery import (
     change_tracker,

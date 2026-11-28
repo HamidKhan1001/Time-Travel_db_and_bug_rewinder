@@ -1,4 +1,5 @@
 """Orchestrator: parses the request, drives the tools, streams events, enforces the HITL gate."""
+import contextlib
 import os
 import threading
 import time
@@ -237,10 +238,8 @@ def _pipeline(s):
         "rewind_target_ts": target,
         "timings": s.timing_report(),
     })
-    try:
+    with contextlib.suppress(Exception):          # closing is best effort: the work is already committed
         branch.close()
-    except Exception:
-        pass
     live.close()
 
 
@@ -320,10 +319,8 @@ def discard(sid):
         s.phase = "discarded"
     s.log("HITL Gate", "Plan discarded by a human. Production was not touched.", "warn")
     for name in (f"branch_{s.id}.db", f"scratch_{s.id}.db"):
-        try:
+        with contextlib.suppress(OSError):
             os.remove(os.path.join(db.DATA, name))
-        except OSError:
-            pass
     return s
 
 

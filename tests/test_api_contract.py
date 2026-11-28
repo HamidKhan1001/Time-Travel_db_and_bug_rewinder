@@ -3,15 +3,16 @@ import json
 import os
 import sys
 import tempfile
-import threading
 import unittest
 import urllib.error
 import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import server
+import harness
+
 from timetravel import agent, appcode, db
+from timetravel.web.http import NotFound
 
 
 class ApiContractTests(unittest.TestCase):
@@ -37,7 +38,7 @@ class ApiContractTests(unittest.TestCase):
         self.tmp.cleanup()
 
     def test_place_order_response_contract(self):
-        response = server.post("/api/orders", {
+        response = harness.call_route("POST", "/api/orders", {
             "customer_id": 1,
             "idem_key": "api-contract-key",
             "items": [{"sku": "APX-0001", "qty": 2}],
@@ -52,21 +53,21 @@ class ApiContractTests(unittest.TestCase):
             "idem_key": "api-contract-duplicate",
             "items": [{"sku": "APX-0001", "qty": 1}],
         }
-        first = server.post("/api/orders", body)
-        second = server.post("/api/orders", body)
+        first = harness.call_route("POST", "/api/orders", body)
+        second = harness.call_route("POST", "/api/orders", body)
         self.assertEqual(first["order_id"], second["order_id"])
         self.assertEqual(second["duplicate"], True)
 
     def test_sync_stock_requires_sku_in_live_handler_contract(self):
-        response = server.post("/api/admin/sync-stock", {"sku": "APX-0001", "stock": 7})
+        response = harness.call_route("POST", "/api/admin/sync-stock", {"sku": "APX-0001", "stock": 7})
         self.assertEqual(response, {"updated_rows": 1})
 
-    def test_unknown_post_route_returns_key_error_for_http_handler_mapping(self):
-        with self.assertRaises(KeyError):
-            server.post("/api/not-a-route", {})
+    def test_unknown_post_route_raises_not_found_for_the_http_layer_to_map_to_404(self):
+        with self.assertRaises(NotFound):
+            harness.call_route("POST", "/api/not-a-route", {})
 
     def test_api_state_shape(self):
-        state = server.api_state()
+        state = harness.api_state()
         for key in ("now", "inventory", "orders", "incident", "order_dots", "patched", "warm"):
             self.assertIn(key, state)
         self.assertIn("skus", state["inventory"])
@@ -75,11 +76,9 @@ class ApiContractTests(unittest.TestCase):
         self.assertIn("sample", state["inventory"])
 
     def test_root_redirects_to_the_react_app(self):
-        httpd = server.ThreadingHTTPServer(("127.0.0.1", 0), server.H)
-        thread = threading.Thread(target=httpd.serve_forever, daemon=True)
-        thread.start()
+        running = harness.start_server()
         try:
-            connection = http.client.HTTPConnection("127.0.0.1", httpd.server_address[1], timeout=2)
+            connection = http.client.HTTPConnection("127.0.0.1", running.port, timeout=2)
             for path in ("/", "/index.html"):
                 connection.request("GET", path)
                 response = connection.getresponse()
@@ -87,26 +86,18 @@ class ApiContractTests(unittest.TestCase):
                 self.assertEqual((response.status, response.getheader("Location")), (302, "/app/"), path)
             connection.close()
         finally:
-            httpd.shutdown()
-            httpd.server_close()
-            thread.join(timeout=2)
+            running.stop()
 
     def test_session_endpoint_exposes_timing_contract(self):
         session = agent.Session("api timing contract")
         agent.SESSIONS[session.id] = session
-        httpd = server.ThreadingHTTPServer(("127.0.0.1", 0), server.H)
-        thread = threading.Thread(target=httpd.serve_forever, daemon=True)
-        thread.start()
-        port = httpd.server_address[1]
+        running = harness.start_server()
         try:
-            response = urllib.request.urlopen(
-                f"http://127.0.0.1:{port}/api/session/{session.id}", timeout=2)
+            response = urllib.request.urlopen(f"{running.url}/api/session/{session.id}", timeout=2)
             payload = json.loads(response.read().decode("utf-8"))
             response.close()
         finally:
-            httpd.shutdown()
-            httpd.server_close()
-            thread.join(timeout=2)
+            running.stop()
         self.assertIn("timings", payload)
         for value in payload["timings"].values():
             self.assertIsNone(value)

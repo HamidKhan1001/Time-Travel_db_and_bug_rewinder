@@ -79,6 +79,7 @@ class Settings:
     demo_routes: bool = True                   # /api/demo/* (reset, crash, orders); turn off for anything public
     # demo + storage
     demo_crash_sku: str = "APX-0007"
+    dashboard_skus: Tuple[str, ...] = ("APX-0007", "APX-0042", "APX-0100", "APX-0555", "APX-0777")
     data_dir: str = os.path.join(BASE_DIR, "data")
     pace: float = 0.4
     log_level: str = "INFO"
@@ -104,9 +105,10 @@ def load(env: Optional[Mapping[str, str]] = None) -> Settings:
         rate_write_burst=_number(env, "TT_RATE_WRITE_BURST", 20, int, 1),
         rate_auth_fail_per_minute=_number(env, "TT_RATE_AUTH_FAIL_PER_MIN", 10, int, 0),
         api_token=env.get("TT_API_TOKEN", ""),
-        csp=env["TT_CSP"] if "TT_CSP" in env else DEFAULT_CSP,
+        csp=env.get("TT_CSP", DEFAULT_CSP),
         demo_routes=_flag(env, "TT_DEMO_ROUTES", True),
         demo_crash_sku=env.get("TT_DEMO_SKU", "APX-0007").strip() or "APX-0007",
+        dashboard_skus=_csv(env, "TT_DASHBOARD_SKUS") or Settings.dashboard_skus,
         data_dir=os.path.abspath(env.get("TT_DATA_DIR") or os.path.join(BASE_DIR, "data")),
         pace=_number(env, "TT_PACE", 0.4, float, 0.0),
         log_level=(env.get("TT_LOG_LEVEL", "INFO").strip() or "INFO").upper(),

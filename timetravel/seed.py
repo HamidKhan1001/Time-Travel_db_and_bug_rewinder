@@ -1,4 +1,5 @@
 """Deterministic demo seed + reset. Run `python3 reset.py` between takes."""
+import contextlib
 import glob
 import os
 import random
@@ -26,10 +27,8 @@ def reset():
     # WAL mode keeps -wal/-shm sidecars; a stale one next to a new database file would corrupt it.
     for f in (glob.glob(os.path.join(db.DATA, "*.db")) + glob.glob(os.path.join(db.DATA, "*.db-wal"))
               + glob.glob(os.path.join(db.DATA, "*.db-shm"))):
-        try:
+        with contextlib.suppress(OSError):
             os.remove(f)
-        except OSError:
-            pass
     os.makedirs(db.DATA, exist_ok=True)
     with db.LOCK:
         c = db.connect()

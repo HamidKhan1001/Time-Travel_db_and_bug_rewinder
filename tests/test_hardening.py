@@ -11,8 +11,11 @@ from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import server
+import harness
+
 from timetravel import agent, appcode, db, seed
+from timetravel.web.maintenance import Maintenance
+from timetravel.web.routes import state as state_routes
 
 
 class IsolatedDB(unittest.TestCase):
@@ -40,15 +43,12 @@ class IsolatedDB(unittest.TestCase):
 class HttpHardeningTests(IsolatedDB):
     def setUp(self):
         super().setUp()
-        self.httpd = server.ThreadingHTTPServer(("127.0.0.1", 0), server.H)
-        self.thread = threading.Thread(target=self.httpd.serve_forever, daemon=True)
-        self.thread.start()
-        self.port = self.httpd.server_address[1]
+        self.running = harness.start_server()
+        self.ctx = self.running.ctx
+        self.port = self.running.port
 
     def tearDown(self):
-        self.httpd.shutdown()
-        self.httpd.server_close()
-        self.thread.join(timeout=2)
+        self.running.stop()
         super().tearDown()
 
     def call(self, method, path, body=None, headers=None):
@@ -63,16 +63,16 @@ class HttpHardeningTests(IsolatedDB):
             return r.status, None
 
     def test_oversized_body_is_rejected_with_413_before_reading_it(self):
-        with mock.patch.object(server, "MAX_BODY_BYTES", 100):
-            status, body = self.call("POST", "/api/rewind", body=json.dumps({"prompt": "x" * 500}),
-                                     headers={"Content-Type": "application/json"})
+        self.ctx.reconfigure(max_body_bytes=100)
+        status, body = self.call("POST", "/api/rewind", body=json.dumps({"prompt": "x" * 500}),
+                                 headers={"Content-Type": "application/json"})
         self.assertEqual(status, 413)
         self.assertIn("too large", body["error"])
 
     def test_body_at_the_limit_is_accepted(self):
         payload = json.dumps({"sku": "NOPE", "stock": 1})
-        with mock.patch.object(server, "MAX_BODY_BYTES", len(payload)):
-            status, _ = self.call("POST", "/api/admin/sync-stock", body=payload)
+        self.ctx.reconfigure(max_body_bytes=len(payload))
+        status, _ = self.call("POST", "/api/admin/sync-stock", body=payload)
         self.assertNotEqual(status, 413)
 
     def test_invalid_json_and_non_object_bodies_are_400(self):
@@ -93,7 +93,7 @@ class HttpHardeningTests(IsolatedDB):
             self.assertEqual(r.status, 400, value)
 
     def test_unhandled_error_does_not_leak_internals(self):
-        with mock.patch.object(server, "api_state", side_effect=RuntimeError("secret /path/to/db failure")):
+        with mock.patch.object(state_routes, "build_state", side_effect=RuntimeError("secret /path/to/db failure")):
             status, body = self.call("GET", "/api/state")
         self.assertEqual(status, 500)
         self.assertEqual(body["error"], "internal error")
@@ -105,12 +105,12 @@ class HttpHardeningTests(IsolatedDB):
         sid = next(iter(agent.SESSIONS))
         sem = threading.BoundedSemaphore(1)
         sem.acquire()                                    # every slot taken
-        with mock.patch.object(server, "SSE_SLOTS", sem):
-            c = http.client.HTTPConnection("127.0.0.1", self.port, timeout=3)
-            c.request("GET", f"/api/session/{sid}/events")
-            r = c.getresponse()
-            r.read()
-            c.close()
+        self.ctx.sse_slots = sem
+        c = http.client.HTTPConnection("127.0.0.1", self.port, timeout=3)
+        c.request("GET", f"/api/session/{sid}/events")
+        r = c.getresponse()
+        r.read()
+        c.close()
         self.assertEqual(r.status, 503)
         self.assertEqual(r.getheader("Retry-After"), "5")
 
@@ -249,10 +249,11 @@ class WarmLoopTests(IsolatedDB):
             held.append(not got[0])
             return real(conn, dest)
 
+        ctx = harness.make_context()
         with mock.patch.object(db, "clone", spy):
-            server.warm_tick()
+            Maintenance(ctx).warm_tick()
         self.assertEqual(held, [False])
-        self.assertIsNotNone(server.WARM["ms"])
+        self.assertIsNotNone(ctx.warm["ms"])
 
     def test_loop_survives_failures_and_logs_once_per_streak(self):
         calls = {"n": 0}
@@ -263,10 +264,11 @@ class WarmLoopTests(IsolatedDB):
                 raise SystemExit              # leave the infinite loop
             raise RuntimeError("db gone")
 
-        with mock.patch.object(server, "warm_tick", boom), mock.patch.object(server.time, "sleep"), \
-                self.assertLogs("timetravel.http", level="ERROR") as logs:
-            with self.assertRaises(SystemExit):
-                server.warm_loop()
+        maintenance = Maintenance(harness.make_context())
+        with mock.patch.object(maintenance, "warm_tick", boom), \
+                self.assertLogs("timetravel.http", level="ERROR") as logs, \
+                self.assertRaises(SystemExit):
+            maintenance.run_forever(sleep=lambda seconds: None)
         self.assertEqual(calls["n"], 4)
         self.assertEqual(len(logs.records), 1)
 

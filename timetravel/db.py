@@ -62,8 +62,8 @@ DROP TABLE IF EXISTS customers;
 
 
 def connect(path=LIVE):
-    from .recovery import transaction_logger
     from . import audit
+    from .recovery import transaction_logger
     c = sqlite3.connect(path, timeout=30, check_same_thread=False, isolation_level=None,
                         factory=transaction_logger.RecoveryConnection)
     c.row_factory = sqlite3.Row

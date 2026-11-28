@@ -18,6 +18,7 @@ sys.path.insert(0, HERE)
 sys.path.insert(0, ROOT)
 
 from generate_data import DEFAULT_SEED, generate_dataset
+
 from timetravel import db
 from timetravel.recovery import change_tracker, recovery_engine
 

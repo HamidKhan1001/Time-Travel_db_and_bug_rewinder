@@ -9,7 +9,7 @@ flowchart TB
     subgraph Browser
         UI["React UI (frontend/)<br/>console · review · audit log"]
     end
-    subgraph Server["Python process (server.py)"]
+    subgraph Server["Python process (server.py -> timetravel/web)"]
         API["HTTP API<br/>request IDs · access log · optional bearer token"]
         AGENT["Agent (timetravel/agent.py)<br/>session state machine, approval gate"]
         LLM["LLM layer (timetravel/llm/)<br/>Gemini · Bedrock · regex fallback"]
@@ -41,7 +41,7 @@ flowchart TB
 sequenceDiagram
     actor Human
     participant UI as React UI
-    participant API as server.py
+    participant API as timetravel/web
     participant Agent
     participant Tools
     participant Live as live DB
@@ -126,7 +126,7 @@ stateDiagram-v2
 
 | Area | Files |
 |---|---|
-| HTTP | `server.py` |
+| HTTP | `server.py` (entry point), `timetravel/web/` (context, router, security, handler, `routes/`), `timetravel/config.py`, `timetravel/ratelimit.py` |
 | Orchestration | `timetravel/agent.py`, `timetravel/sse.py`, `timetravel/recovery_projection.py` |
 | Recovery tools | `timetravel/tools.py`, `timetravel/db.py`, `timetravel/seed.py`, `timetravel/appcode.py` |
 | Safety | `timetravel/guard.py`, `timetravel/audit.py` |

@@ -1,17 +1,17 @@
 import os
+import sqlite3
 import sys
 import tempfile
-import threading
 import time
 import unittest
-from unittest import mock
 import urllib.error
 import urllib.request
-import sqlite3
+from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import server
+import harness
+
 from timetravel import audit, db, sse
 
 
@@ -104,10 +104,8 @@ class SSETests(unittest.TestCase):
         audit.record_event(conn, "INC-A1B2C3", "recovery_initiated", "started", {})
         conn.close()
 
-        httpd = server.ThreadingHTTPServer(("127.0.0.1", 0), server.H)
-        thread = threading.Thread(target=httpd.serve_forever, daemon=True)
-        thread.start()
-        port = httpd.server_address[1]
+        running = harness.start_server()
+        port = running.port
         try:
             response = urllib.request.urlopen(
                 f"http://127.0.0.1:{port}/api/session/INC-A1B2C3/events",
@@ -120,15 +118,11 @@ class SSETests(unittest.TestCase):
             response.close()
             time.sleep(0.2)
         finally:
-            httpd.shutdown()
-            httpd.server_close()
-            thread.join(timeout=2)
+            running.stop()
 
     def test_http_sse_unknown_and_invalid_ids(self):
-        httpd = server.ThreadingHTTPServer(("127.0.0.1", 0), server.H)
-        thread = threading.Thread(target=httpd.serve_forever, daemon=True)
-        thread.start()
-        port = httpd.server_address[1]
+        running = harness.start_server()
+        port = running.port
         try:
             for url, status in (
                 (f"http://127.0.0.1:{port}/api/session/INC-Z9Y8X7/events", 404),
@@ -139,9 +133,7 @@ class SSETests(unittest.TestCase):
                     urllib.request.urlopen(url, timeout=2)
                 self.assertEqual(raised.exception.code, status)
         finally:
-            httpd.shutdown()
-            httpd.server_close()
-            thread.join(timeout=2)
+            running.stop()
 
     def test_heartbeat_format(self):
         heartbeat = sse.format_heartbeat(1795340000.0)

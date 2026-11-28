@@ -1,5 +1,6 @@
 """Integrity validation for recovery plans and recovered database state."""
 import json
+
 from . import dependencies, verification
 
 
@@ -82,6 +83,17 @@ def _expected_states(plan):
     return expected
 
 
+def _has_value_error(step) -> bool:
+    """True when a step's before/after images do not fit the captured operation it reverses."""
+    if step.source_op == "I":                  # an insert is reversed by a delete
+        return not (step.op == "D" and step.new_values is not None)
+    if step.source_op == "U":                  # an update is reversed by an update with both images
+        return not (step.op == "U" and step.old_values and step.new_values)
+    if step.source_op == "D":                  # a delete is reversed by an insert of the old row
+        return not (step.op == "I" and step.old_values and step.new_values is None)
+    return False
+
+
 def validate_plan(plan, tables):
     """Validate a plan structurally without touching the database."""
     checks = []
@@ -93,14 +105,7 @@ def validate_plan(plan, tables):
     checks.append(_check("Plan steps use supported operations",
                          all(step.op in ("I", "U", "D") for step in plan.steps),
                          ",".join(sorted({step.op for step in plan.steps})) or "none"))
-    value_errors = 0
-    for step in plan.steps:
-        if step.source_op == "I" and not (step.op == "D" and step.new_values is not None):
-            value_errors += 1
-        elif step.source_op == "U" and not (step.op == "U" and step.old_values and step.new_values):
-            value_errors += 1
-        elif step.source_op == "D" and not (step.op == "I" and step.old_values and step.new_values is None):
-            value_errors += 1
+    value_errors = sum(_has_value_error(step) for step in plan.steps)
     checks.append(_check("Plan values match captured operations", value_errors == 0,
                          f"{value_errors} malformed step(s)"))
     fingerprint = plan.fingerprint()

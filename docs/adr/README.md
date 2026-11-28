@@ -10,3 +10,5 @@ Short notes on why the system is built the way it is. Format: context, decision,
 | [0004](0004-human-approval-and-undo.md) | A human approves every apply, and every apply can be undone | Accepted |
 | [0005](0005-ui-polls-through-adapters.md) | The UI polls the session and reads the API through adapters | Accepted |
 | [0006](0006-standard-library-core.md) | The core engine uses only the standard library and SQLite | Accepted |
+| [0007](0007-web-layer-structure.md) | The HTTP layer is a package with an explicit context and a route table | Accepted |
+| [0008](0008-keep-the-legacy-changelog-for-now.md) | The legacy `changelog` stays until the rewind path moves to `transaction_history` | Accepted (revisit) |

@@ -48,14 +48,14 @@ def build_preview(conn, plan, summary, sample_limit=SAMPLE_LIMIT):
         entry = by_table.setdefault(table, {"INSERT": 0, "UPDATE": 0, "DELETE": 0})
         entry[operation] += 1
 
-    for sku, name, target_stock, price_cents in plan.get("inventory_rows", ()):
+    for sku, _name, target_stock, _price_cents in plan.get("inventory_rows", ()):
         operation = "UPDATE" if sku in current_stock else "INSERT"
         add("inventory", _row(
             f"inventory:{sku}:stock", "inventory", sku, "stock", operation,
             current_stock.get(sku), target_stock,
             "Idempotent inventory upsert restores the pre-incident stock value."), operation)
 
-    for order_id, customer_id, total_cents, status, idem_key, created_at in plan.get("order_rows", ()):
+    for order_id, customer_id, total_cents, status, _idem_key, _created_at in plan.get("order_rows", ()):
         if order_id in live_orders:
             if order_id in backorders and live_orders[order_id] != "backorder":
                 add("orders", _row(
@@ -69,14 +69,14 @@ def build_preview(conn, plan, summary, sample_limit=SAMPLE_LIMIT):
                  "total_cents": total_cents},
                 "Post-incident order re-asserted by the approved merge plan."), "INSERT")
 
-    for item_id, order_id, sku, qty, unit_cents in plan.get("item_rows", ()):
+    for item_id, order_id, sku, qty, _unit_cents in plan.get("item_rows", ()):
         if item_id not in live_items:
             add("order_items", _row(
                 f"order_items:{item_id}:record", "order_items", item_id, "record", "INSERT", None,
                 {"id": item_id, "order_id": order_id, "sku": sku, "qty": qty},
                 "Line item preserved with its parent order."), "INSERT")
 
-    for customer_id, name, email in plan.get("customer_rows", ()):
+    for customer_id, name, _email in plan.get("customer_rows", ()):
         if customer_id not in live_customers:
             add("customers", _row(
                 f"customers:{customer_id}:record", "customers", customer_id, "record", "INSERT", None,
@@ -126,8 +126,8 @@ def capture_actual(conn, preview):
             values[row_id] = {"unavailable": "record is not present after recovery"}
             continue
         if field == "record" and isinstance(row.get("after"), dict):
-            values[row_id] = {name: _json_value(record[name]) for name in row["after"] if name in record.keys()}
-        elif field in record.keys():
+            values[row_id] = {name: _json_value(record[name]) for name in row["after"] if name in record.keys()}  # noqa: SIM118  (sqlite3.Row: `in` tests values, not columns)
+        elif field in record.keys():  # noqa: SIM118
             values[row_id] = _json_value(record[field])
         else:
             values[row_id] = {"unavailable": "field is not present after recovery"}

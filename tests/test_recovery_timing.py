@@ -67,9 +67,9 @@ class RecoveryTimingTests(unittest.TestCase):
     def test_apply_failure_records_execution_timing_and_audit(self):
         session = self._session()
         with mock.patch.object(agent, "_monotonic", side_effect=[10.0, 10.5, 10.8]), \
-                mock.patch.object(agent.tools, "apply_recovery_tool", side_effect=RuntimeError("boom")):
-            with self.assertRaises(RuntimeError):
-                agent.approve(session.id)
+                mock.patch.object(agent.tools, "apply_recovery_tool", side_effect=RuntimeError("boom")), \
+                self.assertRaises(RuntimeError):
+            agent.approve(session.id)
 
         self.assertEqual(session.phase, "awaiting_approval")
         self.assertAlmostEqual(session.timing_report()["approval_delay_seconds"], 0.5, places=12)

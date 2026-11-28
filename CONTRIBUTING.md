@@ -27,7 +27,7 @@ python3 evals/run_evals.py
 Rules of thumb:
 
 - **Tests for behaviour changes.** A bug fix gets a regression test that fails without the fix.
-- **API changes** update `docs/openapi.json` and `API.md`. A contract test fails if the spec and `server.py` disagree.
+- **API changes** update `docs/openapi.json` and `API.md`. A contract test compares `docs/openapi.json` with the router in `timetravel/web/routes/` and fails if they disagree. A new endpoint is a function in `routes/` plus one `router.get/post` line.
 - **Never "fix" `app/handlers.py` or `seed/handlers_buggy.py.txt`.** The bug in the storefront handler *is* the demo, and ruff excludes those paths on purpose.
 - **Do not run `tests/e2e.py` from the repo root** if you want to keep your `data/` and `app/handlers.py`; use `python3 tests/e2e_isolated.py`.
 - Keep the core (`timetravel/`, `server.py`) free of third-party imports. See [ADR 0006](docs/adr/0006-standard-library-core.md).

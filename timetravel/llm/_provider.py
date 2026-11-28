@@ -52,7 +52,7 @@ class GeminiProvider:
     """
 
     def __init__(self, config: LLMConfig) -> None:
-        from google import genai          # ImportError → caught by make_provider
+        from google import genai  # ImportError → caught by make_provider
         self._client = genai.Client(api_key=config.api_key)
         self._model = config.model
         logger.info(f"GeminiProvider ready (model={config.model})")
@@ -113,7 +113,7 @@ class BedrockProvider:
     """
 
     def __init__(self, config: LLMConfig) -> None:
-        import boto3                      # ImportError → caught by make_provider
+        import boto3  # ImportError → caught by make_provider
         self._client = boto3.client(
             "bedrock-runtime",
             region_name=config.bedrock_region,

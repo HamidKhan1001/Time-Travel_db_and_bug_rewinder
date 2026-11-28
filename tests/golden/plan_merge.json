@@ -1,0 +1,1265 @@
+{
+ "clean": {
+  "expected": {
+   "A-1": 8,
+   "B-2": 2,
+   "C-3": 0
+  },
+  "plan": {
+   "backorder_ids": [],
+   "customer_rows": [
+    [
+     1,
+     "Ava",
+     "ava@example.com"
+    ]
+   ],
+   "inventory_rows": [
+    [
+     "A-1",
+     "Alpha",
+     8,
+     500
+    ],
+    [
+     "B-2",
+     "Beta",
+     2,
+     900
+    ]
+   ],
+   "item_rows": [
+    [
+     1,
+     2001,
+     "A-1",
+     2,
+     100
+    ],
+    [
+     2,
+     2001,
+     "B-2",
+     1,
+     100
+    ]
+   ],
+   "order_rows": [
+    [
+     2001,
+     1,
+     1000,
+     "paid",
+     "idem-2001-0123456789",
+     1200.0
+    ]
+   ]
+  },
+  "summary": {
+   "conflicts": [],
+   "dry_run": [
+    {
+     "detail": "0 violations",
+     "name": "Foreign keys intact",
+     "ok": true
+    },
+    {
+     "detail": "0 negative rows",
+     "name": "No negative stock",
+     "ok": true
+    },
+    {
+     "detail": "0 mismatched SKUs",
+     "name": "Inventory matches merge plan",
+     "ok": true
+    },
+    {
+     "detail": "1/1 present",
+     "name": "Post-incident orders preserved",
+     "ok": true
+    }
+   ],
+   "dry_run_ok": true,
+   "guardrails": [
+    {
+     "allowed": true,
+     "rule": "scoped",
+     "sql": "INSERT INTO inventory(sku,name,stock,price_cents) VALUES(?,?,?,?) ON CONFLICT(sku) DO UPDATE SET stock=excluded.stock"
+    },
+    {
+     "allowed": true,
+     "rule": "scoped",
+     "sql": "INSERT INTO customers(id,name,email) VALUES(?,?,?) ON CONFLICT(id) DO NOTHING"
+    },
+    {
+     "allowed": true,
+     "rule": "scoped",
+     "sql": "INSERT INTO orders(id,customer_id,total_cents,status,idem_key,created_at) VALUES(?,?,?,?,?,?) ON CONFLICT(id) DO NOTHING"
+    },
+    {
+     "allowed": true,
+     "rule": "scoped",
+     "sql": "INSERT INTO order_items(id,order_id,sku,qty,unit_cents) VALUES(?,?,?,?,?) ON CONFLICT(id) DO NOTHING"
+    },
+    {
+     "allowed": true,
+     "rule": "scoped",
+     "sql": "UPDATE orders SET status='backorder' WHERE id=?"
+    }
+   ],
+   "live_marker": 10,
+   "order_ids": [
+    2001
+   ],
+   "orders_preserved": 1,
+   "preview_sql": [
+    "-- Restore inventory (2 rows, idempotent upsert)\nINSERT INTO inventory(sku,name,stock,price_cents) VALUES(?,?,?,?) ON CONFLICT(sku) DO UPDATE SET stock=excluded.stock;",
+    "-- e.g. (A-1, stock=8); (B-2, stock=2); ... +0 more",
+    "-- Re-assert 1 post-incident orders (no-op if present)\nINSERT INTO orders(id,customer_id,total_cents,status,idem_key,created_at) VALUES(?,?,?,?,?,?) ON CONFLICT(id) DO NOTHING;",
+    "-- No oversell conflicts to resolve"
+   ],
+   "resolver_checks": {
+    "fk_customer": 1,
+    "fk_sku": 2,
+    "id_collision": 1,
+    "idem_unique": 1
+   },
+   "restored_rows": 2,
+   "risk": {
+    "factors": [
+     [
+      "Base risk (scoped, idempotent statements, dry-run on clone)",
+      8
+     ]
+    ],
+    "label": "LOW",
+    "score": 8
+   },
+   "units_after": 10,
+   "units_before": 0,
+   "zero_after": 1,
+   "zero_before": 3
+  }
+ },
+ "duplicate_idempotency": {
+  "expected": {
+   "A-1": 9,
+   "B-2": 3,
+   "C-3": 0
+  },
+  "plan": {
+   "backorder_ids": [],
+   "customer_rows": [
+    [
+     1,
+     "Ava",
+     "ava@example.com"
+    ]
+   ],
+   "inventory_rows": [
+    [
+     "A-1",
+     "Alpha",
+     9,
+     500
+    ]
+   ],
+   "item_rows": [
+    [
+     1,
+     2001,
+     "A-1",
+     1,
+     100
+    ]
+   ],
+   "order_rows": [
+    [
+     2001,
+     1,
+     1000,
+     "paid",
+     "same-key-0123456789",
+     1200.0
+    ]
+   ]
+  },
+  "summary": {
+   "conflicts": [
+    {
+     "detail": "Idempotency key same-key-0 already used.",
+     "kind": "duplicate-idempotency-key",
+     "order_id": 2001,
+     "reason": "Idempotency key same-key-0 already used."
+    }
+   ],
+   "dry_run": [
+    {
+     "detail": "0 violations",
+     "name": "Foreign keys intact",
+     "ok": true
+    },
+    {
+     "detail": "0 negative rows",
+     "name": "No negative stock",
+     "ok": true
+    },
+    {
+     "detail": "0 mismatched SKUs",
+     "name": "Inventory matches merge plan",
+     "ok": true
+    },
+    {
+     "detail": "1/1 present",
+     "name": "Post-incident orders preserved",
+     "ok": true
+    }
+   ],
+   "dry_run_ok": true,
+   "guardrails": [
+    {
+     "allowed": true,
+     "rule": "scoped",
+     "sql": "INSERT INTO inventory(sku,name,stock,price_cents) VALUES(?,?,?,?) ON CONFLICT(sku) DO UPDATE SET stock=excluded.stock"
+    },
+    {
+     "allowed": true,
+     "rule": "scoped",
+     "sql": "INSERT INTO customers(id,name,email) VALUES(?,?,?) ON CONFLICT(id) DO NOTHING"
+    },
+    {
+     "allowed": true,
+     "rule": "scoped",
+     "sql": "INSERT INTO orders(id,customer_id,total_cents,status,idem_key,created_at) VALUES(?,?,?,?,?,?) ON CONFLICT(id) DO NOTHING"
+    },
+    {
+     "allowed": true,
+     "rule": "scoped",
+     "sql": "INSERT INTO order_items(id,order_id,sku,qty,unit_cents) VALUES(?,?,?,?,?) ON CONFLICT(id) DO NOTHING"
+    },
+    {
+     "allowed": true,
+     "rule": "scoped",
+     "sql": "UPDATE orders SET status='backorder' WHERE id=?"
+    }
+   ],
+   "live_marker": 8,
+   "order_ids": [
+    2001
+   ],
+   "orders_preserved": 1,
+   "preview_sql": [
+    "-- Restore inventory (1 rows, idempotent upsert)\nINSERT INTO inventory(sku,name,stock,price_cents) VALUES(?,?,?,?) ON CONFLICT(sku) DO UPDATE SET stock=excluded.stock;",
+    "-- e.g. (A-1, stock=9); ... +0 more",
+    "-- Re-assert 1 post-incident orders (no-op if present)\nINSERT INTO orders(id,customer_id,total_cents,status,idem_key,created_at) VALUES(?,?,?,?,?,?) ON CONFLICT(id) DO NOTHING;",
+    "-- No oversell conflicts to resolve"
+   ],
+   "resolver_checks": {
+    "fk_customer": 1,
+    "fk_sku": 1,
+    "id_collision": 1,
+    "idem_unique": 0
+   },
+   "restored_rows": 1,
+   "risk": {
+    "factors": [
+     [
+      "Base risk (scoped, idempotent statements, dry-run on clone)",
+      8
+     ],
+     [
+      "1 data conflict(s) auto-resolved, needs human eyes",
+      12
+     ]
+    ],
+    "label": "LOW",
+    "score": 20
+   },
+   "units_after": 12,
+   "units_before": 13,
+   "zero_after": 1,
+   "zero_before": 1
+  }
+ },
+ "id_collision": {
+  "expected": {
+   "A-1": 10,
+   "B-2": 3,
+   "C-3": 0
+  },
+  "plan": {
+   "backorder_ids": [],
+   "customer_rows": [
+    [
+     1,
+     "Ava",
+     "ava@example.com"
+    ]
+   ],
+   "inventory_rows": [],
+   "item_rows": [],
+   "order_rows": [
+    [
+     2001,
+     1,
+     10,
+     "paid",
+     "new-idem-0123456789",
+     1300.0
+    ]
+   ]
+  },
+  "summary": {
+   "conflicts": [
+    {
+     "detail": "Order id 2001 already exists in the rewound state.",
+     "kind": "id-collision",
+     "order_id": 2001,
+     "reason": "Order id 2001 already exists in the rewound state."
+    }
+   ],
+   "dry_run": [
+    {
+     "detail": "0 violations",
+     "name": "Foreign keys intact",
+     "ok": true
+    },
+    {
+     "detail": "0 negative rows",
+     "name": "No negative stock",
+     "ok": true
+    },
+    {
+     "detail": "0 mismatched SKUs",
+     "name": "Inventory matches merge plan",
+     "ok": true
+    },
+    {
+     "detail": "1/1 present",
+     "name": "Post-incident orders preserved",
+     "ok": true
+    }
+   ],
+   "dry_run_ok": true,
+   "guardrails": [
+    {
+     "allowed": true,
+     "rule": "scoped",
+     "sql": "INSERT INTO inventory(sku,name,stock,price_cents) VALUES(?,?,?,?) ON CONFLICT(sku) DO UPDATE SET stock=excluded.stock"
+    },
+    {
+     "allowed": true,
+     "rule": "scoped",
+     "sql": "INSERT INTO customers(id,name,email) VALUES(?,?,?) ON CONFLICT(id) DO NOTHING"
+    },
+    {
+     "allowed": true,
+     "rule": "scoped",
+     "sql": "INSERT INTO orders(id,customer_id,total_cents,status,idem_key,created_at) VALUES(?,?,?,?,?,?) ON CONFLICT(id) DO NOTHING"
+    },
+    {
+     "allowed": true,
+     "rule": "scoped",
+     "sql": "INSERT INTO order_items(id,order_id,sku,qty,unit_cents) VALUES(?,?,?,?,?) ON CONFLICT(id) DO NOTHING"
+    },
+    {
+     "allowed": true,
+     "rule": "scoped",
+     "sql": "UPDATE orders SET status='backorder' WHERE id=?"
+    }
+   ],
+   "live_marker": 7,
+   "order_ids": [
+    2001
+   ],
+   "orders_preserved": 1,
+   "preview_sql": [
+    "-- Restore inventory (0 rows, idempotent upsert)\nINSERT INTO inventory(sku,name,stock,price_cents) VALUES(?,?,?,?) ON CONFLICT(sku) DO UPDATE SET stock=excluded.stock;",
+    "-- e.g. ; ... +0 more",
+    "-- Re-assert 1 post-incident orders (no-op if present)\nINSERT INTO orders(id,customer_id,total_cents,status,idem_key,created_at) VALUES(?,?,?,?,?,?) ON CONFLICT(id) DO NOTHING;",
+    "-- No oversell conflicts to resolve"
+   ],
+   "resolver_checks": {
+    "fk_customer": 1,
+    "fk_sku": 0,
+    "id_collision": 0,
+    "idem_unique": 1
+   },
+   "restored_rows": 0,
+   "risk": {
+    "factors": [
+     [
+      "Base risk (scoped, idempotent statements, dry-run on clone)",
+      8
+     ],
+     [
+      "1 data conflict(s) auto-resolved, needs human eyes",
+      12
+     ]
+    ],
+    "label": "LOW",
+    "score": 20
+   },
+   "units_after": 13,
+   "units_before": 13,
+   "zero_after": 1,
+   "zero_before": 1
+  }
+ },
+ "many_conflicts_high_risk": {
+  "expected": {
+   "A-1": 10,
+   "B-2": 0,
+   "C-3": 0
+  },
+  "plan": {
+   "backorder_ids": [
+    3001,
+    3002,
+    3003,
+    3004,
+    3005
+   ],
+   "customer_rows": [
+    [
+     1,
+     "Ava",
+     "ava@example.com"
+    ]
+   ],
+   "inventory_rows": [
+    [
+     "A-1",
+     "Alpha",
+     10,
+     500
+    ]
+   ],
+   "item_rows": [
+    [
+     1,
+     3000,
+     "B-2",
+     2,
+     100
+    ],
+    [
+     2,
+     3001,
+     "B-2",
+     2,
+     100
+    ],
+    [
+     3,
+     3002,
+     "B-2",
+     2,
+     100
+    ],
+    [
+     4,
+     3003,
+     "B-2",
+     2,
+     100
+    ],
+    [
+     5,
+     3004,
+     "B-2",
+     2,
+     100
+    ],
+    [
+     6,
+     3005,
+     "B-2",
+     2,
+     100
+    ]
+   ],
+   "order_rows": [
+    [
+     3000,
+     1,
+     1000,
+     "paid",
+     "idem-3000-0123456789",
+     1200.0
+    ],
+    [
+     3001,
+     1,
+     1000,
+     "paid",
+     "idem-3001-0123456789",
+     1200.0
+    ],
+    [
+     3002,
+     1,
+     1000,
+     "paid",
+     "idem-3002-0123456789",
+     1200.0
+    ],
+    [
+     3003,
+     1,
+     1000,
+     "paid",
+     "idem-3003-0123456789",
+     1200.0
+    ],
+    [
+     3004,
+     1,
+     1000,
+     "paid",
+     "idem-3004-0123456789",
+     1200.0
+    ],
+    [
+     3005,
+     1,
+     1000,
+     "paid",
+     "idem-3005-0123456789",
+     1200.0
+    ]
+   ]
+  },
+  "summary": {
+   "conflicts": [
+    {
+     "detail": "Order #3001 bought 2x B-2 but only 1 existed at the rewind point. Resolved: stock clamped to 0, order kept and marked 'backorder' for ops follow-up (1 unit(s) owed).",
+     "kind": "oversell",
+     "order_id": 3001,
+     "reason": "Order #3001 bought 2x B-2 but only 1 existed at the rewind point. Resolved: stock clamped to 0, order kept and marked 'backorder' for ops follow-up (1 unit(s) owed).",
+     "shortfall": 1,
+     "sku": "B-2"
+    },
+    {
+     "detail": "Order #3002 bought 2x B-2 but only 0 existed at the rewind point. Resolved: stock clamped to 0, order kept and marked 'backorder' for ops follow-up (2 unit(s) owed).",
+     "kind": "oversell",
+     "order_id": 3002,
+     "reason": "Order #3002 bought 2x B-2 but only 0 existed at the rewind point. Resolved: stock clamped to 0, order kept and marked 'backorder' for ops follow-up (2 unit(s) owed).",
+     "shortfall": 2,
+     "sku": "B-2"
+    },
+    {
+     "detail": "Order #3003 bought 2x B-2 but only 0 existed at the rewind point. Resolved: stock clamped to 0, order kept and marked 'backorder' for ops follow-up (2 unit(s) owed).",
+     "kind": "oversell",
+     "order_id": 3003,
+     "reason": "Order #3003 bought 2x B-2 but only 0 existed at the rewind point. Resolved: stock clamped to 0, order kept and marked 'backorder' for ops follow-up (2 unit(s) owed).",
+     "shortfall": 2,
+     "sku": "B-2"
+    },
+    {
+     "detail": "Order #3004 bought 2x B-2 but only 0 existed at the rewind point. Resolved: stock clamped to 0, order kept and marked 'backorder' for ops follow-up (2 unit(s) owed).",
+     "kind": "oversell",
+     "order_id": 3004,
+     "reason": "Order #3004 bought 2x B-2 but only 0 existed at the rewind point. Resolved: stock clamped to 0, order kept and marked 'backorder' for ops follow-up (2 unit(s) owed).",
+     "shortfall": 2,
+     "sku": "B-2"
+    },
+    {
+     "detail": "Order #3005 bought 2x B-2 but only 0 existed at the rewind point. Resolved: stock clamped to 0, order kept and marked 'backorder' for ops follow-up (2 unit(s) owed).",
+     "kind": "oversell",
+     "order_id": 3005,
+     "reason": "Order #3005 bought 2x B-2 but only 0 existed at the rewind point. Resolved: stock clamped to 0, order kept and marked 'backorder' for ops follow-up (2 unit(s) owed).",
+     "shortfall": 2,
+     "sku": "B-2"
+    }
+   ],
+   "dry_run": [
+    {
+     "detail": "0 violations",
+     "name": "Foreign keys intact",
+     "ok": true
+    },
+    {
+     "detail": "0 negative rows",
+     "name": "No negative stock",
+     "ok": true
+    },
+    {
+     "detail": "0 mismatched SKUs",
+     "name": "Inventory matches merge plan",
+     "ok": true
+    },
+    {
+     "detail": "6/6 present",
+     "name": "Post-incident orders preserved",
+     "ok": true
+    }
+   ],
+   "dry_run_ok": true,
+   "guardrails": [
+    {
+     "allowed": true,
+     "rule": "scoped",
+     "sql": "INSERT INTO inventory(sku,name,stock,price_cents) VALUES(?,?,?,?) ON CONFLICT(sku) DO UPDATE SET stock=excluded.stock"
+    },
+    {
+     "allowed": true,
+     "rule": "scoped",
+     "sql": "INSERT INTO customers(id,name,email) VALUES(?,?,?) ON CONFLICT(id) DO NOTHING"
+    },
+    {
+     "allowed": true,
+     "rule": "scoped",
+     "sql": "INSERT INTO orders(id,customer_id,total_cents,status,idem_key,created_at) VALUES(?,?,?,?,?,?) ON CONFLICT(id) DO NOTHING"
+    },
+    {
+     "allowed": true,
+     "rule": "scoped",
+     "sql": "INSERT INTO order_items(id,order_id,sku,qty,unit_cents) VALUES(?,?,?,?,?) ON CONFLICT(id) DO NOTHING"
+    },
+    {
+     "allowed": true,
+     "rule": "scoped",
+     "sql": "UPDATE orders SET status='backorder' WHERE id=?"
+    }
+   ],
+   "live_marker": 19,
+   "order_ids": [
+    3000,
+    3001,
+    3002,
+    3003,
+    3004,
+    3005
+   ],
+   "orders_preserved": 6,
+   "preview_sql": [
+    "-- Restore inventory (1 rows, idempotent upsert)\nINSERT INTO inventory(sku,name,stock,price_cents) VALUES(?,?,?,?) ON CONFLICT(sku) DO UPDATE SET stock=excluded.stock;",
+    "-- e.g. (A-1, stock=10); ... +0 more",
+    "-- Re-assert 6 post-incident orders (no-op if present)\nINSERT INTO orders(id,customer_id,total_cents,status,idem_key,created_at) VALUES(?,?,?,?,?,?) ON CONFLICT(id) DO NOTHING;",
+    "-- Resolve oversell conflicts (5)\nUPDATE orders SET status='backorder' WHERE id=?;"
+   ],
+   "resolver_checks": {
+    "fk_customer": 6,
+    "fk_sku": 6,
+    "id_collision": 6,
+    "idem_unique": 6
+   },
+   "restored_rows": 1,
+   "risk": {
+    "factors": [
+     [
+      "Base risk (scoped, idempotent statements, dry-run on clone)",
+      8
+     ],
+     [
+      "5 data conflict(s) auto-resolved, needs human eyes",
+      60
+     ]
+    ],
+    "label": "HIGH",
+    "score": 68
+   },
+   "units_after": 10,
+   "units_before": 0,
+   "zero_after": 2,
+   "zero_before": 3
+  }
+ },
+ "no_orders": {
+  "expected": {
+   "A-1": 10,
+   "B-2": 3,
+   "C-3": 0
+  },
+  "plan": {
+   "backorder_ids": [],
+   "customer_rows": [],
+   "inventory_rows": [
+    [
+     "A-1",
+     "Alpha",
+     10,
+     500
+    ],
+    [
+     "B-2",
+     "Beta",
+     3,
+     900
+    ]
+   ],
+   "item_rows": [],
+   "order_rows": []
+  },
+  "summary": {
+   "conflicts": [],
+   "dry_run": [
+    {
+     "detail": "0 violations",
+     "name": "Foreign keys intact",
+     "ok": true
+    },
+    {
+     "detail": "0 negative rows",
+     "name": "No negative stock",
+     "ok": true
+    },
+    {
+     "detail": "0 mismatched SKUs",
+     "name": "Inventory matches merge plan",
+     "ok": true
+    },
+    {
+     "detail": "0/0 present",
+     "name": "Post-incident orders preserved",
+     "ok": true
+    }
+   ],
+   "dry_run_ok": true,
+   "guardrails": [
+    {
+     "allowed": true,
+     "rule": "scoped",
+     "sql": "INSERT INTO inventory(sku,name,stock,price_cents) VALUES(?,?,?,?) ON CONFLICT(sku) DO UPDATE SET stock=excluded.stock"
+    },
+    {
+     "allowed": true,
+     "rule": "scoped",
+     "sql": "INSERT INTO customers(id,name,email) VALUES(?,?,?) ON CONFLICT(id) DO NOTHING"
+    },
+    {
+     "allowed": true,
+     "rule": "scoped",
+     "sql": "INSERT INTO orders(id,customer_id,total_cents,status,idem_key,created_at) VALUES(?,?,?,?,?,?) ON CONFLICT(id) DO NOTHING"
+    },
+    {
+     "allowed": true,
+     "rule": "scoped",
+     "sql": "INSERT INTO order_items(id,order_id,sku,qty,unit_cents) VALUES(?,?,?,?,?) ON CONFLICT(id) DO NOTHING"
+    },
+    {
+     "allowed": true,
+     "rule": "scoped",
+     "sql": "UPDATE orders SET status='backorder' WHERE id=?"
+    }
+   ],
+   "live_marker": 7,
+   "order_ids": [],
+   "orders_preserved": 0,
+   "preview_sql": [
+    "-- Restore inventory (2 rows, idempotent upsert)\nINSERT INTO inventory(sku,name,stock,price_cents) VALUES(?,?,?,?) ON CONFLICT(sku) DO UPDATE SET stock=excluded.stock;",
+    "-- e.g. (A-1, stock=10); (B-2, stock=3); ... +0 more",
+    "-- Re-assert 0 post-incident orders (no-op if present)\nINSERT INTO orders(id,customer_id,total_cents,status,idem_key,created_at) VALUES(?,?,?,?,?,?) ON CONFLICT(id) DO NOTHING;",
+    "-- No oversell conflicts to resolve"
+   ],
+   "resolver_checks": {
+    "fk_customer": 0,
+    "fk_sku": 0,
+    "id_collision": 0,
+    "idem_unique": 0
+   },
+   "restored_rows": 2,
+   "risk": {
+    "factors": [
+     [
+      "Base risk (scoped, idempotent statements, dry-run on clone)",
+      8
+     ]
+    ],
+    "label": "LOW",
+    "score": 8
+   },
+   "units_after": 13,
+   "units_before": 0,
+   "zero_after": 1,
+   "zero_before": 3
+  }
+ },
+ "orphan_sku_and_new_customer": {
+  "expected": {
+   "A-1": 9,
+   "B-2": 3,
+   "C-3": 0
+  },
+  "plan": {
+   "backorder_ids": [],
+   "customer_rows": [
+    [
+     2,
+     "Ben",
+     "ben@example.com"
+    ]
+   ],
+   "inventory_rows": [
+    [
+     "A-1",
+     "Alpha",
+     9,
+     500
+    ]
+   ],
+   "item_rows": [
+    [
+     1,
+     2001,
+     "A-1",
+     1,
+     100
+    ],
+    [
+     2,
+     2001,
+     "GHOST",
+     1,
+     100
+    ]
+   ],
+   "order_rows": [
+    [
+     2001,
+     2,
+     1000,
+     "paid",
+     "idem-2001-0123456789",
+     1200.0
+    ]
+   ]
+  },
+  "summary": {
+   "conflicts": [
+    {
+     "detail": "Unknown SKU GHOST",
+     "kind": "orphan-sku",
+     "order_id": 2001,
+     "reason": "Unknown SKU GHOST"
+    }
+   ],
+   "dry_run": [
+    {
+     "detail": "1 violations",
+     "name": "Foreign keys intact",
+     "ok": false
+    },
+    {
+     "detail": "0 negative rows",
+     "name": "No negative stock",
+     "ok": true
+    },
+    {
+     "detail": "0 mismatched SKUs",
+     "name": "Inventory matches merge plan",
+     "ok": true
+    },
+    {
+     "detail": "1/1 present",
+     "name": "Post-incident orders preserved",
+     "ok": true
+    }
+   ],
+   "dry_run_ok": false,
+   "guardrails": [
+    {
+     "allowed": true,
+     "rule": "scoped",
+     "sql": "INSERT INTO inventory(sku,name,stock,price_cents) VALUES(?,?,?,?) ON CONFLICT(sku) DO UPDATE SET stock=excluded.stock"
+    },
+    {
+     "allowed": true,
+     "rule": "scoped",
+     "sql": "INSERT INTO customers(id,name,email) VALUES(?,?,?) ON CONFLICT(id) DO NOTHING"
+    },
+    {
+     "allowed": true,
+     "rule": "scoped",
+     "sql": "INSERT INTO orders(id,customer_id,total_cents,status,idem_key,created_at) VALUES(?,?,?,?,?,?) ON CONFLICT(id) DO NOTHING"
+    },
+    {
+     "allowed": true,
+     "rule": "scoped",
+     "sql": "INSERT INTO order_items(id,order_id,sku,qty,unit_cents) VALUES(?,?,?,?,?) ON CONFLICT(id) DO NOTHING"
+    },
+    {
+     "allowed": true,
+     "rule": "scoped",
+     "sql": "UPDATE orders SET status='backorder' WHERE id=?"
+    }
+   ],
+   "live_marker": 8,
+   "order_ids": [
+    2001
+   ],
+   "orders_preserved": 1,
+   "preview_sql": [
+    "-- Restore inventory (1 rows, idempotent upsert)\nINSERT INTO inventory(sku,name,stock,price_cents) VALUES(?,?,?,?) ON CONFLICT(sku) DO UPDATE SET stock=excluded.stock;",
+    "-- e.g. (A-1, stock=9); ... +0 more",
+    "-- Re-assert 1 post-incident orders (no-op if present)\nINSERT INTO orders(id,customer_id,total_cents,status,idem_key,created_at) VALUES(?,?,?,?,?,?) ON CONFLICT(id) DO NOTHING;",
+    "-- No oversell conflicts to resolve"
+   ],
+   "resolver_checks": {
+    "fk_customer": 1,
+    "fk_sku": 1,
+    "id_collision": 1,
+    "idem_unique": 1
+   },
+   "restored_rows": 1,
+   "risk": {
+    "factors": [
+     [
+      "Base risk (scoped, idempotent statements, dry-run on clone)",
+      8
+     ],
+     [
+      "1 data conflict(s) auto-resolved, needs human eyes",
+      12
+     ],
+     [
+      "Dry-run check FAILED",
+      60
+     ]
+    ],
+    "label": "HIGH",
+    "score": 80
+   },
+   "units_after": 12,
+   "units_before": 13,
+   "zero_after": 1,
+   "zero_before": 1
+  }
+ },
+ "oversell": {
+  "expected": {
+   "A-1": 9,
+   "B-2": 0,
+   "C-3": 0
+  },
+  "plan": {
+   "backorder_ids": [
+    2001,
+    2002
+   ],
+   "customer_rows": [
+    [
+     1,
+     "Ava",
+     "ava@example.com"
+    ]
+   ],
+   "inventory_rows": [
+    [
+     "A-1",
+     "Alpha",
+     9,
+     500
+    ]
+   ],
+   "item_rows": [
+    [
+     1,
+     2001,
+     "B-2",
+     5,
+     100
+    ],
+    [
+     2,
+     2002,
+     "B-2",
+     1,
+     100
+    ],
+    [
+     3,
+     2002,
+     "A-1",
+     1,
+     100
+    ]
+   ],
+   "order_rows": [
+    [
+     2001,
+     1,
+     1000,
+     "paid",
+     "idem-2001-0123456789",
+     1200.0
+    ],
+    [
+     2002,
+     1,
+     1000,
+     "paid",
+     "idem-2002-0123456789",
+     1200.0
+    ]
+   ]
+  },
+  "summary": {
+   "conflicts": [
+    {
+     "detail": "Order #2001 bought 5x B-2 but only 3 existed at the rewind point. Resolved: stock clamped to 0, order kept and marked 'backorder' for ops follow-up (2 unit(s) owed).",
+     "kind": "oversell",
+     "order_id": 2001,
+     "reason": "Order #2001 bought 5x B-2 but only 3 existed at the rewind point. Resolved: stock clamped to 0, order kept and marked 'backorder' for ops follow-up (2 unit(s) owed).",
+     "shortfall": 2,
+     "sku": "B-2"
+    },
+    {
+     "detail": "Order #2002 bought 1x B-2 but only 0 existed at the rewind point. Resolved: stock clamped to 0, order kept and marked 'backorder' for ops follow-up (1 unit(s) owed).",
+     "kind": "oversell",
+     "order_id": 2002,
+     "reason": "Order #2002 bought 1x B-2 but only 0 existed at the rewind point. Resolved: stock clamped to 0, order kept and marked 'backorder' for ops follow-up (1 unit(s) owed).",
+     "shortfall": 1,
+     "sku": "B-2"
+    }
+   ],
+   "dry_run": [
+    {
+     "detail": "0 violations",
+     "name": "Foreign keys intact",
+     "ok": true
+    },
+    {
+     "detail": "0 negative rows",
+     "name": "No negative stock",
+     "ok": true
+    },
+    {
+     "detail": "0 mismatched SKUs",
+     "name": "Inventory matches merge plan",
+     "ok": true
+    },
+    {
+     "detail": "2/2 present",
+     "name": "Post-incident orders preserved",
+     "ok": true
+    }
+   ],
+   "dry_run_ok": true,
+   "guardrails": [
+    {
+     "allowed": true,
+     "rule": "scoped",
+     "sql": "INSERT INTO inventory(sku,name,stock,price_cents) VALUES(?,?,?,?) ON CONFLICT(sku) DO UPDATE SET stock=excluded.stock"
+    },
+    {
+     "allowed": true,
+     "rule": "scoped",
+     "sql": "INSERT INTO customers(id,name,email) VALUES(?,?,?) ON CONFLICT(id) DO NOTHING"
+    },
+    {
+     "allowed": true,
+     "rule": "scoped",
+     "sql": "INSERT INTO orders(id,customer_id,total_cents,status,idem_key,created_at) VALUES(?,?,?,?,?,?) ON CONFLICT(id) DO NOTHING"
+    },
+    {
+     "allowed": true,
+     "rule": "scoped",
+     "sql": "INSERT INTO order_items(id,order_id,sku,qty,unit_cents) VALUES(?,?,?,?,?) ON CONFLICT(id) DO NOTHING"
+    },
+    {
+     "allowed": true,
+     "rule": "scoped",
+     "sql": "UPDATE orders SET status='backorder' WHERE id=?"
+    }
+   ],
+   "live_marker": 12,
+   "order_ids": [
+    2001,
+    2002
+   ],
+   "orders_preserved": 2,
+   "preview_sql": [
+    "-- Restore inventory (1 rows, idempotent upsert)\nINSERT INTO inventory(sku,name,stock,price_cents) VALUES(?,?,?,?) ON CONFLICT(sku) DO UPDATE SET stock=excluded.stock;",
+    "-- e.g. (A-1, stock=9); ... +0 more",
+    "-- Re-assert 2 post-incident orders (no-op if present)\nINSERT INTO orders(id,customer_id,total_cents,status,idem_key,created_at) VALUES(?,?,?,?,?,?) ON CONFLICT(id) DO NOTHING;",
+    "-- Resolve oversell conflicts (2)\nUPDATE orders SET status='backorder' WHERE id=?;"
+   ],
+   "resolver_checks": {
+    "fk_customer": 2,
+    "fk_sku": 3,
+    "id_collision": 2,
+    "idem_unique": 2
+   },
+   "restored_rows": 1,
+   "risk": {
+    "factors": [
+     [
+      "Base risk (scoped, idempotent statements, dry-run on clone)",
+      8
+     ],
+     [
+      "2 data conflict(s) auto-resolved, needs human eyes",
+      24
+     ]
+    ],
+    "label": "MEDIUM",
+    "score": 32
+   },
+   "units_after": 9,
+   "units_before": 0,
+   "zero_after": 2,
+   "zero_before": 3
+  }
+ },
+ "oversell_same_order_twice": {
+  "expected": {
+   "A-1": 10,
+   "B-2": 0,
+   "C-3": 0
+  },
+  "plan": {
+   "backorder_ids": [
+    2001
+   ],
+   "customer_rows": [
+    [
+     1,
+     "Ava",
+     "ava@example.com"
+    ]
+   ],
+   "inventory_rows": [
+    [
+     "A-1",
+     "Alpha",
+     10,
+     500
+    ]
+   ],
+   "item_rows": [
+    [
+     1,
+     2001,
+     "B-2",
+     4,
+     100
+    ],
+    [
+     2,
+     2001,
+     "B-2",
+     4,
+     100
+    ]
+   ],
+   "order_rows": [
+    [
+     2001,
+     1,
+     1000,
+     "paid",
+     "idem-2001-0123456789",
+     1200.0
+    ]
+   ]
+  },
+  "summary": {
+   "conflicts": [
+    {
+     "detail": "Order #2001 bought 4x B-2 but only 3 existed at the rewind point. Resolved: stock clamped to 0, order kept and marked 'backorder' for ops follow-up (1 unit(s) owed).",
+     "kind": "oversell",
+     "order_id": 2001,
+     "reason": "Order #2001 bought 4x B-2 but only 3 existed at the rewind point. Resolved: stock clamped to 0, order kept and marked 'backorder' for ops follow-up (1 unit(s) owed).",
+     "shortfall": 1,
+     "sku": "B-2"
+    },
+    {
+     "detail": "Order #2001 bought 4x B-2 but only 0 existed at the rewind point. Resolved: stock clamped to 0, order kept and marked 'backorder' for ops follow-up (4 unit(s) owed).",
+     "kind": "oversell",
+     "order_id": 2001,
+     "reason": "Order #2001 bought 4x B-2 but only 0 existed at the rewind point. Resolved: stock clamped to 0, order kept and marked 'backorder' for ops follow-up (4 unit(s) owed).",
+     "shortfall": 4,
+     "sku": "B-2"
+    }
+   ],
+   "dry_run": [
+    {
+     "detail": "0 violations",
+     "name": "Foreign keys intact",
+     "ok": true
+    },
+    {
+     "detail": "0 negative rows",
+     "name": "No negative stock",
+     "ok": true
+    },
+    {
+     "detail": "0 mismatched SKUs",
+     "name": "Inventory matches merge plan",
+     "ok": true
+    },
+    {
+     "detail": "1/1 present",
+     "name": "Post-incident orders preserved",
+     "ok": true
+    }
+   ],
+   "dry_run_ok": true,
+   "guardrails": [
+    {
+     "allowed": true,
+     "rule": "scoped",
+     "sql": "INSERT INTO inventory(sku,name,stock,price_cents) VALUES(?,?,?,?) ON CONFLICT(sku) DO UPDATE SET stock=excluded.stock"
+    },
+    {
+     "allowed": true,
+     "rule": "scoped",
+     "sql": "INSERT INTO customers(id,name,email) VALUES(?,?,?) ON CONFLICT(id) DO NOTHING"
+    },
+    {
+     "allowed": true,
+     "rule": "scoped",
+     "sql": "INSERT INTO orders(id,customer_id,total_cents,status,idem_key,created_at) VALUES(?,?,?,?,?,?) ON CONFLICT(id) DO NOTHING"
+    },
+    {
+     "allowed": true,
+     "rule": "scoped",
+     "sql": "INSERT INTO order_items(id,order_id,sku,qty,unit_cents) VALUES(?,?,?,?,?) ON CONFLICT(id) DO NOTHING"
+    },
+    {
+     "allowed": true,
+     "rule": "scoped",
+     "sql": "UPDATE orders SET status='backorder' WHERE id=?"
+    }
+   ],
+   "live_marker": 10,
+   "order_ids": [
+    2001
+   ],
+   "orders_preserved": 1,
+   "preview_sql": [
+    "-- Restore inventory (1 rows, idempotent upsert)\nINSERT INTO inventory(sku,name,stock,price_cents) VALUES(?,?,?,?) ON CONFLICT(sku) DO UPDATE SET stock=excluded.stock;",
+    "-- e.g. (A-1, stock=10); ... +0 more",
+    "-- Re-assert 1 post-incident orders (no-op if present)\nINSERT INTO orders(id,customer_id,total_cents,status,idem_key,created_at) VALUES(?,?,?,?,?,?) ON CONFLICT(id) DO NOTHING;",
+    "-- Resolve oversell conflicts (1)\nUPDATE orders SET status='backorder' WHERE id=?;"
+   ],
+   "resolver_checks": {
+    "fk_customer": 1,
+    "fk_sku": 2,
+    "id_collision": 1,
+    "idem_unique": 1
+   },
+   "restored_rows": 1,
+   "risk": {
+    "factors": [
+     [
+      "Base risk (scoped, idempotent statements, dry-run on clone)",
+      8
+     ],
+     [
+      "2 data conflict(s) auto-resolved, needs human eyes",
+      24
+     ]
+    ],
+    "label": "MEDIUM",
+    "score": 32
+   },
+   "units_after": 10,
+   "units_before": 0,
+   "zero_after": 2,
+   "zero_before": 3
+  }
+ }
+}
