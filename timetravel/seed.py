@@ -23,7 +23,9 @@ def reset():
     import gc
     appcode.write_source(appcode.read_source(appcode.PRISTINE_PATH))   # restore the buggy code
     gc.collect()
-    for f in glob.glob(os.path.join(db.DATA, "*.db")):
+    # WAL mode keeps -wal/-shm sidecars; a stale one next to a new database file would corrupt it.
+    for f in (glob.glob(os.path.join(db.DATA, "*.db")) + glob.glob(os.path.join(db.DATA, "*.db-wal"))
+              + glob.glob(os.path.join(db.DATA, "*.db-shm"))):
         try:
             os.remove(f)
         except OSError:
